@@ -56,5 +56,5 @@ Route::resource('ventas', App\Http\Controllers\VentaController::class);
 ## Crear ruta para el buscador
 Route::get('buscar-productos', [App\Http\Controllers\VentaController::class, 'buscarProducto']);
 
-## Crear ruta para Pedidos
+## Crear ruta para Pedidos Ex Final
 Route::resource('pedidos', App\Http\Controllers\PedidosController::class);
