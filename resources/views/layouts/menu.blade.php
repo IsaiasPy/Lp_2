@@ -26,6 +26,37 @@
         <p>Pedidos</p>
     </a>
 </li>
+<li class="nav-item {{ Request::is('users*')
+ ? 'menu-is-opening menu-open' : '' }}
+">
+    <a href="#" class="nav-link nav-configuraciones">
+        <i class="fas fa-cogs"></i>
+        <p>
+            Reportes
+            <i class="fas fa-angle-left right"></i>
+        </p>
+    </a>
+    <ul class="nav nav-treeview" style="display: {{ 
+    Request::is('reporte-cargos*')|| Request::is('reporte-clientes*')
+     ? 'block;' : 'none;' }};">
+        <li class="nav-item">
+            <a href="{{ url('reporte-cargos') }}" class="nav-link {{ Request::is('reporte-cargos*') ? 'active' : '' }}">
+                <i class="fas fa-address-card"></i>
+                <p>Reporte Cargos</p>
+            </a>
+        </li>
+    </ul>
+      <ul class="nav nav-treeview" style="display: {{ 
+    Request::is('reporte-clientes*')
+     ? 'block;' : 'none;' }};">
+        <li class="nav-item">
+            <a href="{{ url('reporte-clientes') }}" class="nav-link {{ Request::is('reporte-clientes*') ? 'active' : '' }}">
+                <i class="fas fa-users"></i>
+                <p>Reporte Clientes</p>
+            </a>
+        </li>
+    </ul>
+</li>
 
 <li class="nav-item {{ Request::is('users*')
     ||Request::is('cargos*')

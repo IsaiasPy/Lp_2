@@ -19,26 +19,26 @@
                 <ul class="navbar-nav ml-auto">
                     <li class="nav-item dropdown user-menu">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                            <img src="https://assets.infyom.com/logo/blue_logo_150x150.png"
+                            <img src="https://avatars.githubusercontent.com/u/958072?v=4"
                                 class="user-image img-circle elevation-2" alt="User Image">
                             <span class="d-none d-md-inline">{{ Auth::user()->name }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
                             <!-- User image -->
                             <li class="user-header bg-primary">
-                                <img src="https://assets.infyom.com/logo/blue_logo_150x150.png"
+                                <img src="https://avatars.githubusercontent.com/u/958072?v=4"
                                     class="img-circle elevation-2" alt="User Image">
                                 <p>
                                     {{ Auth::user()->name }}
-                                    <small>Member since {{ Auth::user()->created_at->format('M. Y') }}</small>
+                                    <small>Miembro desde {{ Auth::user()->created_at->format('M. Y') }}</small>
                                 </p>
                             </li>
                             <!-- Menu Footer-->
                             <li class="user-footer">
-                                <a href="#" class="btn btn-default btn-flat">Profile</a>
+                                <a href="#" class="btn btn-default btn-flat">Perfil</a>
                                 <a href="#" class="btn btn-default btn-flat float-right"
                                     onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                                    Sign out
+                                    Cerrar Sesión
                                 </a>
                                 <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
                                     @csrf
@@ -69,7 +69,7 @@
 
        <!-- Required Scripts -->
             <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
             
         <!-- Cargar codigo Java Script -->
         @stack('scripts')

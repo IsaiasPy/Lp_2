@@ -58,3 +58,12 @@ Route::get('buscar-productos', [App\Http\Controllers\VentaController::class, 'bu
 
 ## Crear ruta para Pedidos Examen Final
 Route::resource('pedidos', App\Http\Controllers\PedidosController::class);
+
+## Crear ruta Pdf
+Route::get('pdf', [App\Http\Controllers\VentaController::class, 'pdf']);
+
+## Crear ruta reporte cargo
+Route::get('reporte-cargos', [App\Http\Controllers\ReporteController::class, 'rpt_cargos']);
+
+## Crear ruta para reporte clientes
+Route::get('reporte-clientes', [App\Http\Controllers\ReporteController::class, 'rpt_clientes']);

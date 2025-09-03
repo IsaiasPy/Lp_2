@@ -75,6 +75,7 @@
 <!-- Js -->
 @push('scripts')
     <script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
         //comenzar la carga con document ready
         $(document).ready(function() {
             /** CONSULTAR AJAX PARA LLENAR POR DEFECTO EL MODAL AL ABRIR SE CONSULTA LA URL */

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Laracasts\Flash\Flash;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class VentaController extends Controller
 {
@@ -429,5 +430,11 @@ class VentaController extends Controller
 
         ## Retornar la variable productos segun el filtro a nuestro html de buscar_productos
         return view('ventas.body_producto')->with('productos', $productos);
+    }
+    public function pdf()
+    {
+        $data = ['<h1>Prueba de PDF</h1>']; // Aqui se prepara los datos que necesita la vista para generar el PDF
+        $pdf = Pdf::loadView('ventas.invoice', compact('data'));
+        return $pdf->download('invoice.pdf');
     }
 }
