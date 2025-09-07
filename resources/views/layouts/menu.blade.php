@@ -1,6 +1,6 @@
 
 <li class="nav-item">
-    <a href="{{ route('home') }}" class="nav-link {{ Request::is('home') ? '' : 'active' }}">
+    <a href="{{ route('home') }}" class="nav-link {{ Request::is('home') ? '' : 'none' }}">
         <i class="nav-icon fas fa-home"></i>
         <p>Home</p>
     </a>    

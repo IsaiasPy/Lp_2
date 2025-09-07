@@ -84,7 +84,7 @@ class ClienteController extends Controller
         }
 
         # insertar datos en clientes
-        DB::insert('INSERT INTO clientes (clie_nombre, cli_apellido, clie_ci, clie_telefono, clie_direccion, cli_fecha_nac, id_departamento, id_ciudad) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [
+        DB::insert('INSERT INTO clientes (clie_nombre, clie_apellido, clie_ci, clie_telefono, clie_direccion, cli_fecha_nac, id_departamento, id_ciudad) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [
             $input['clie_nombre'],
             $input['clie_apellido'],
             $input['clie_ci'],

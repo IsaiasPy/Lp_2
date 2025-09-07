@@ -113,11 +113,11 @@
 
             $('[data-toggle="tooltip"]').tooltip();
             // boton para generar consulta al controlador reportes funcion rpt_cargos
-            $('#btn-consultar').click(function(e) {
+             $('#btn-consultar').click(function(e) {
                 // Aquí puedes agregar la lógica para generar el reporte
                 e.preventDefault();
                 window.location.href = '{{ url('reporte-clientes') }}?desde=' + $('#desde').val() +
-                    '&hasta=' + $('#ciudad').val();
+                    '&hasta=' + $('#hasta').val() + '&ciudad=' + $('#ciudad').val();
             });
 
             // boton para generar la exportación a pdf del reporte

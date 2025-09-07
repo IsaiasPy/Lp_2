@@ -15,12 +15,13 @@
                 <br>
                 <!-- Aquí se mostrará la tabla con los resultados -->
                 <div id="modalResults">
-                    <!-- resultado de la busqueda del buscar_proudctos.blade.php -->
+                    <!-- resultado de la busqueda del body_producto.blade.php -->
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 
 <style>
     /* Cambiar el cursor a una mano cuando el mouse esté sobre una fila */
@@ -33,9 +34,9 @@
 
 <!-- Script para manejar la búsqueda -->
 <!-- SECCION JAVASCRIPT -->
-@push('page_scripts')
+@push('scripts')
 <script>
-    // Evento para buscar productos al teclear en el input y consultar la funcion buscar productos
+        // Evento para buscar productos al teclear en el input y consultar la funcion buscar productos
         document.getElementById('productSearchQuery').addEventListener('keyup', function() {
             let query = this.value;
             fetch('{{ url('buscar-productos') }}?query=' + query + '&cod_suc=' + $("#id_sucursal").val())
@@ -43,7 +44,9 @@
                 .then(html => {
                     document.getElementById('modalResults').innerHTML = html;
                 })
-                .catch(error => console.error('Errors:', error));
+                .catch(error => {
+                    console.error('Error:', error);
+                });
         });
 
         function seleccionarProducto(codigo, producto, precio) {
@@ -77,7 +80,7 @@
             document.getElementById('selectedProducts').appendChild(row);
 
             // Calcular el total general según el detalle cargado
-                total();
+            total();
 
             // Cerrar el modal después de seleccionar el producto
             $('#productSearchModal').modal('hide');
@@ -107,7 +110,7 @@
                 total += parseFloat(subtotal.value.replace(/\./g, ''));
             });
 
-            /** actualizar mi elemento ven_total y dentro del campo imprimimos el valor calculado */
+            /** actualizar mi elemento total y dentro del campo imprimimos el valor calculado */
             document.getElementById('total').value = formatMoney(total);
         }
 
@@ -122,15 +125,17 @@
 
         /** esta funcion nos ayudara a dar el formato a nuestros precios en javacript y colocar el separador de miles correspondientes */
         function formatMoney (n, c, d, t) {
-             let s, i, j;
-             c = isNaN(c = Math.abs(c)) ? 0 : c;
-             d = d === undefined ? "," : d;
-             t = t === undefined ? "." : t;
-             s = n < 0 ? "-" : "";
-             i = String(parseInt(n = Math.abs(Number(n) || 0).toFixed(c)));
+            let s, i, j;
+            c = isNaN(c = Math.abs(c)) ? 0 : c;
+            d = d === undefined ? "," : d;
+            t = t === undefined ? "." : t;
+            s = n < 0 ? "-" : "";
+            i = String(parseInt(n = Math.abs(Number(n) || 0).toFixed(c)));
             j = (j = i.length) > 3 ? j % 3 : 0;
-             return s + (j ? i.substr(0, j) + t : "") + i.substr(j).replace(/(\d{3})(?=\d)/g, "$1" + t) +
+            return s + (j ? i.substr(0, j) + t : "") + i.substr(j).replace(/(\d{3})(?=\d)/g, "$1" + t) +
                 (c ? d + Math.abs(n - i).toFixed(c).slice(2) : "");
-         }
+        }
+
+       
 </script>
 @endpush

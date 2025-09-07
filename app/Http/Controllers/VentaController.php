@@ -431,9 +431,10 @@ class VentaController extends Controller
         ## Retornar la variable productos segun el filtro a nuestro html de buscar_productos
         return view('ventas.body_producto')->with('productos', $productos);
     }
+
     public function pdf()
     {
-        $data = ['<h1>Prueba de PDF</h1>']; // Aqui se prepara los datos que necesita la vista para generar el PDF
+        $data = ['<h1>Prueba de PDF</h1>']; // Aquí debes preparar los datos que necesitas para la vista PDF
         $pdf = Pdf::loadView('ventas.invoice', compact('data'));
         return $pdf->download('invoice.pdf');
     }
