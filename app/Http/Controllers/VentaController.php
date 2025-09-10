@@ -72,7 +72,7 @@ class VentaController extends Controller
                 'id_cliente' => 'required|exists:clientes,id_cliente',
                 'condicion_venta' => 'required|in:CONTADO,CREDITO',
                 'intervalo' => 'required_if:condicion_venta,CREDITO|in:0,7,15,30',
-                'cantidad_cuota' => 'required_if:condicion_venta,CREDITO|integer|min:1',
+                'cantidad_cuota' => 'required_if:condicion_venta,CREDITO|integer',
                 'fecha_venta' => 'required|date',
                 'user_id' => 'required|exists:users,id'
             ],
@@ -255,6 +255,8 @@ class VentaController extends Controller
             Flash::error('Venta no encontrada');
             return redirect()->route('ventas.index');
         }
+        $input['intervalo'] = $input['intervalo'] ?? 0;
+        $input['cantidad_cuota'] = $input['cantidad_cuota'] ?? 0;
 
         // Validaciones personalizadas para el formulario ventas
         $validacion = Validator::make(
