@@ -67,3 +67,39 @@ Route::get('reporte-cargos', [App\Http\Controllers\ReporteController::class, 'rp
 
 ## Crear ruta para reporte clientes
 Route::get('reporte-clientes', [App\Http\Controllers\ReporteController::class, 'rpt_clientes']);
+
+## Crear ruta para Pedidos
+Route::resource('pedidos', App\Http\Controllers\PedidosController::class);
+
+## Crear ruta para reporte ventas
+Route::get('reporte-ventas', [App\Http\Controllers\ReporteController::class, 'rpt_ventas']);
+
+## Crear ruta para reporte proveedores
+Route::get('reporte-proveedores', [App\Http\Controllers\ReporteController::class, 'rpt_proveedores']);
+
+## Crear ruta para reporte productos
+Route::get('reporte-productos', [App\Http\Controllers\ReporteController::class, 'rpt_productos']);
+
+## Crear ruta para reporte sucursales
+Route::get('reporte-sucursales', [App\Http\Controllers\ReporteController::class, 'rpt_sucursales']);
+
+## Crear ruta para reporte cajas
+Route::get('reporte-cajas', [App\Http\Controllers\ReporteController::class, 'rpt_cajas']);
+
+## Crear ruta para reporte pedidos
+Route::get('reporte-pedidos', [App\Http\Controllers\ReporteController::class, 'rpt_pedidos']);
+
+## Crear ruta para reporte ciudades
+Route::get('reporte-ciudades', [App\Http\Controllers\ReporteController::class, 'rpt_ciudades']);
+
+## Crear ruta para reporte marcas
+Route::get('reporte-marcas', [App\Http\Controllers\ReporteController::class, 'rpt_marcas']);
+
+## Crear ruta para reporte departamentos
+Route::get('reporte-departamentos', [App\Http\Controllers\ReporteController::class, 'rpt_departamentos']);
+
+## Crear ruta para reporte usuarios
+Route::get('reporte-usuarios', [App\Http\Controllers\ReporteController::class, 'rpt_usuarios']);
+
+## Crear ruta para reporte proveedores
+Route::get('reporte-proveedores', [App\Http\Controllers\ReporteController::class, 'rpt_proveedores']);

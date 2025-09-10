@@ -10,7 +10,8 @@
                 <div class="col-sm-6">
                     <a class="btn btn-primary float-right"
                        href="{{ route('pedidos.create') }}">
-                        Add New
+                        <i class="fas fa-plus"></i>
+                        Nueva Pedido
                     </a>
                 </div>
             </div>

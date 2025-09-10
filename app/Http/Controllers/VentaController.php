@@ -72,7 +72,7 @@ class VentaController extends Controller
                 'id_cliente' => 'required|exists:clientes,id_cliente',
                 'condicion_venta' => 'required|in:CONTADO,CREDITO',
                 'intervalo' => 'required_if:condicion_venta,CREDITO|in:0,7,15,30',
-                'cantidad_cuota' => 'required_if:condicion_venta,CREDITO|integer',
+                'cantidad_cuota' => 'required_if:condicion_venta,CREDITO|integer|min:1',
                 'fecha_venta' => 'required|date',
                 'user_id' => 'required|exists:users,id'
             ],
@@ -103,6 +103,8 @@ class VentaController extends Controller
         // Agregar transacciones
         DB::beginTransaction();
         try {
+             $totalLimpio = str_replace('.', '', $input['total'] ?? '0');
+
             $ventas = DB::table('ventas')->insertGetId([
                 'id_cliente' => $input['id_cliente'],
                 'condicion_venta' => $input['condicion_venta'],
@@ -111,10 +113,10 @@ class VentaController extends Controller
                 'fecha_venta' => $input['fecha_venta'],
                 'factura_nro' => $input['factura_nro'] ?? '0',
                 'user_id' => $user_id,
-                'total' => $input['total'] ?? 0,
+                'total' => $totalLimpio,  // <-- USAMOS EL VALOR LIMPIO SIN PUNTOS
                 'id_sucursal' => $input['id_sucursal'],
                 'estado' => 'COMPLETADO'
-            ], 'id_venta');
+           ],'id_venta');
 
             // insertar detalle ventas
             $subtotal = 0;
@@ -281,12 +283,14 @@ class VentaController extends Controller
 
         DB::beginTransaction();
         try {
+            $totalLimpio = str_replace('.', '', $input['total'] ?? 0); 
             // Actualizar la venta
-            DB::update('UPDATE ventas SET condicion_venta = ?, intervalo = ?, cantidad_cuota = ?, id_sucursal = ? WHERE id_venta = ?', [
+            DB::update('UPDATE ventas SET condicion_venta = ?, intervalo = ?, cantidad_cuota = ?, id_sucursal = ?, total = ? WHERE id_venta = ?', [
                 $input['condicion_venta'],
                 $input['intervalo'],
                 $input['cantidad_cuota'],
                 $input['id_sucursal'],
+                $totalLimpio,
                 $id
             ]);
 
