@@ -11,7 +11,9 @@
             <tr onclick="seleccionarProducto('{{ $producto->id_producto }}', '{{ $producto->descripcion }}', '{{ $producto->precio }}')">
                 <td>{{ $producto->id_producto }}</td>
                 <td>{{ $producto->descripcion }}</td>
-                <td>{{ number_format($producto->precio, 0, ',', '.') }}</td>
+                <td>{{ number_format($producto->precio, 0, ',', '.'
+                
+                ) }}</td>
             </tr>
         @empty
             <tr>

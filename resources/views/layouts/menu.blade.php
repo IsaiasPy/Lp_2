@@ -34,6 +34,13 @@
     </a>
 </li>
 
+<li class="nav-item">
+    <a href="{{ route('compras.index') }}" class="nav-link {{ Request::is('compras*') ? 'active' : '' }}">
+        <i class="fas fa-shopping-bag"></i>
+        <p>Compras</p>
+    </a>
+</li>
+
 <!-- Reportes -->
 <li class="nav-item {{ 
     Request::is('reporte-cargos*') || 

@@ -103,3 +103,6 @@ Route::get('reporte-usuarios', [App\Http\Controllers\ReporteController::class, '
 
 ## Crear ruta para reporte proveedores
 Route::get('reporte-proveedores', [App\Http\Controllers\ReporteController::class, 'rpt_proveedores']);
+
+## Crear ruta para compras
+Route::resource('compras', App\Http\Controllers\ComprasController::class);

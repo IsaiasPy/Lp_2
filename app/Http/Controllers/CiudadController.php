@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Laracasts\Flash\Flash;
+use RealRashid\SweetAlert\Facades\Alert;
 
 class CiudadController extends Controller
 {
@@ -48,7 +49,8 @@ class CiudadController extends Controller
             $input['id_departamento']
         ]);
 
-        Flash::success('La ciudad se ha creado con exito.');
+        //Flash::success('La ciudad se ha creado con exito.');
+        Alert::success('Exito', 'La ciudad se ha creado con exito.');
 
         return redirect()->route('ciudades.index');
     }
@@ -58,7 +60,8 @@ class CiudadController extends Controller
         $ciudad = DB::selectOne('select * from ciudades where id_ciudad = ?', [$id]);
 
         if (empty($ciudad)) {
-            Flash::error("La ciudad no encontrada.");
+           // Flash::error("La ciudad no encontrada.");
+           Alert::error('Error', 'La ciudad no encontrada.');
             //Redirigir a la vista index si la ciudad no existe
             return redirect()->route('ciudades.index');
         }
@@ -90,19 +93,21 @@ class CiudadController extends Controller
         $input['id_departamento'],
         $id
     ]);
-    flash()->success('La ciudad se ha actualizado con exito.');
+    flash()->success('La ciudad se ha actualizado con exito.');    
     return redirect()->route('ciudades.index');
 }
     public function destroy($id) {
         $ciudad = DB::selectOne('select * from ciudades where id_ciudad = ?', [$id]);
 
         if (empty($ciudad)) {
-            Flash::error("La ciudad no encontrada.");
+            //Flash::error("La ciudad no encontrada.");
+            Alert::error('Error', 'La ciudad no encontrada.');
             return redirect()->route('ciudades.index');
         }
         DB::delete('delete from ciudades where id_ciudad = ?', [$id]);
-        flash()->success('La ciudad se ha eliminado con exito.');
-        
+        //flash()->success('La ciudad se ha eliminado con exito.');
+        Alert::success('Exito', 'La ciudad se ha eliminado con exito.');        
+
         return redirect()->route('ciudades.index');
     }
 }

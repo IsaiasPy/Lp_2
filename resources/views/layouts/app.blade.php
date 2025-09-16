@@ -69,12 +69,30 @@
 
        <!-- Required Scripts -->
             <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-            <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
-            
+            {{-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script> --}}
+            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <!-- Cargar codigo Java Script -->
         @stack('scripts')
         <!-- CUSTOM SCRIPTS -->
         <script>
+        //sweetalert para confirmacion de borrado
+            $('.alert-delete').click(function(event) {
+                var form = $(this).closest("form");
+                event.preventDefault();
+                let valor = $(this).data("mensaje") || "este registro"; // Valor por defecto si no hay data-mensaje
+                Swal.fire({
+                        title: "Atención",
+                        text: `Desea borrar ${valor}?`,// valor recibido de data-mensaje del boton borrar
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonText: "Confirmar",
+                        cancelButtonText: "Cancelar",
+                    })
+                    .then(resultado => {
+                        if (resultado.value) {
+                            form.submit();
+                        }
+                    });});
             //formato de numeros separador de miles
             function format(input) {
                 // Eliminar puntos previos para evitar problemas con el replace
