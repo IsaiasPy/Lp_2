@@ -6,7 +6,7 @@
             <div class="row mb-2">
                 <div class="col-sm-12">
                     <h1>
-                        Edit Roles
+                        Editar Roles
                     </h1>
                 </div>
             </div>
@@ -44,13 +44,13 @@
             $(".child").prop("checked", this.checked);
         });
 
-        $('.child').click(function() {
-            if ($('.child:checked').length == $('.child').length) {
-            $('#parent').prop('checked', true);
-            } else {
-            $('#parent').prop('checked', false);
-            }
-        });
+        // $('.child').click(function() {
+        //    if ($('.child:checked').length == $('.child').length) {
+        //    $('#parent').prop('checked', true);
+        //    } else {
+        //    $('#parent').prop('checked', false);
+         //   }
+        // });
     });
 </script>
 @endpush

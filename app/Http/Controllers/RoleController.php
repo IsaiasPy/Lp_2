@@ -6,113 +6,141 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use RealRashid\SweetAlert\Facades\Alert;
+use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
     public function index()
     {
-        //Listar los roles
-        $roles = DB::select('select * from roles order by id desc');
+        $roles = DB::select('SELECT * FROM roles');
+
         return view('roles.index')->with('roles', $roles);
     }
+
     public function create()
     {
         $permisos = DB::table('permissions')->get();
-        //retornar la vista con el formulario de roles create
+
         return view('roles.create')->with('permisos', $permisos);
     }
+
     public function store(Request $request)
     {
-        //recibir los datos del formulario
         $input = $request->all();
+        $input['guard_name'] = 'web';
 
-        //Validar los datos del formulario
-        $validador = Validator::make($input, [
+        // capturar lo seleccionado de la tabla permisos
+        $permissions = $request->get('permiso_id', []);
+
+        // validaciones
+        $validateData = Validator::make($input, [
             'name' => 'required|unique:roles,name',
         ], [
-            'name.required' => 'El campo nombre es obligatorio.',
-            'name.unique' => 'El campo nombre ya está en uso.',
+            'name.required' => 'El campo nombre es obligatorio',
+            'name.unique' => 'El nombre del rol ya existe'
         ]);
-        //Si la validacion falla redirigir de vuelta con errores
-        if ($validador->fails()) {
-            return redirect()->back()->withErrors($validador)->withInput();
+
+        if ($validateData->fails()) {
+            return redirect()->back()->withErrors($validateData)->withInput();
         }
-        //Insertar el nuevo rol en la base de datos
-        DB::insert('INSERT INTO roles (name, guard_name) VALUES (?, ?)', [
-            $input['name'],
-            $input['guard_name']
-        ]);
-        //Mostrar un mensaje de configuracion
-        Alert::toast('Rol creado con exito', 'success');
-        //Redirigir al listado de roles
+
+        //Crear un insert y capturar el id del rol creado
+        $role_id = DB::table('roles')->insertGetId(
+            [
+                'name' => $input['name'],
+                'guard_name' => $input['guard_name']
+            ]
+        );
+
+
+        // asignar permisos al rol
+        $role = Role::findById($role_id);
+        // $role = DB::selectOne('SELECT * FROM roles WHERE id = ?', [$role_id]);
+        // asignar permisos al rol utilizando syncPermissions
+        $role->permissions()->sync($permissions);
+
+        Alert::toast('Rol creado correctamente', 'success');
         return redirect()->route('roles.index');
     }
+
     public function edit($id)
     {
-        $roles = DB::selectone('select * from roles where id = ?', [$id]);
-        //verificar si se encontro el rol
-        if (empty($roles)) {
-            Alert::toast('El rol no existe', 'error');
+        // obtener el rol por su id
+        $role = Role::findById($id);
+
+        if (empty($role)) {
+            Alert::toast('Rol no encontrado', 'error');
             return redirect()->route('roles.index');
         }
-        return view('roles.edit')->with('roles', $roles);
+        // obtener todos los permisos
+        $permisos = DB::table('permissions')->get();
+
+        // obtener los permisos asignados al rol
+        $rolePermissions = DB::select('SELECT permission_id FROM role_has_permissions WHERE role_id = ?', [$id]);
+
+        // crear un array con los ids de los permisos asignados al rol
+        $rolePermissionIds = [];
+        foreach ($rolePermissions as $permission) {
+            $rolePermissionIds[] = $permission->permission_id;
+        }
+
+        return view('roles.edit')->with('roles', $role)
+            ->with('permisos', $permisos)
+            ->with('rolePermissionIds', $rolePermissionIds);
     }
+
     public function update(Request $request, $id)
     {
         $input = $request->all();
-        $roles = DB::selectone('select * from roles where id = ?', [$id]);
-        //verificar si se encontro el rol
-        if (empty($roles)) {
-            Alert::toast('El rol no existe', 'error');
-            return redirect()->route('roles.index');
+        $input['guard_name'] = 'web';
+
+        // capturar lo seleccionado de la tabla permisos
+        $permissions = $request->get('permiso_id', []);
+
+        // validaciones
+        $validateData = Validator::make($input, [
+            'name' => 'required|unique:roles,name,' . $id,
+        ], [
+            'name.required' => 'El campo nombre es obligatorio',
+            'name.unique' => 'El nombre del rol ya existe'
+        ]);
+
+        if ($validateData->fails()) {
+            return redirect()->back()->withErrors($validateData)->withInput();
         }
-        //Validar que el campo 'name' no este vacio
-        $validacion = Validator::make(
-            $input,
-            [
-                'name' => 'required|unique:roles,name,' . $id,
-            ],
-            [
-                'name.required' => 'El campo nombre es obligatorio.',
-                'name.unique' => 'El nombre del rol ya existe.',
-            ]
-        );
-        //Si la validacion falla redirigir de vuelta con errores
-        if ($validacion->fails()) {
-            return redirect()->back()->withErrors($validacion)->withInput();
-        }
-        //Actualizar el rol en la base de datos
+
+        // actualizar el rol
         DB::update('UPDATE roles SET name = ?, guard_name = ? WHERE id = ?', [
             $input['name'],
             $input['guard_name'],
             $id
         ]);
-        //Mostrar un mensaje de configuracion
-        Alert::toast('Rol actualizado con exito', 'success');
-        //Redirigir al listado de roles
+
+        // asignar permisos al rol utilizando syncPermissions
+       // $role = DB::selectOne('SELECT * FROM roles WHERE id = ?', [$id]);
+        $role = Role::findById($id);
+        $role->permissions()->sync($permissions);
+
+        Alert::toast('Rol actualizado correctamente', 'success');
         return redirect()->route('roles.index');
     }
+
     public function destroy($id)
     {
-        $roles = DB::selectone('SELECT * FROM roles WHERE id = ?', [$id]);
-        //verificar si se encontro el rol
-        if (empty($roles)) {
-            Alert::toast('El rol no existe', 'error');
+        $role = DB::selectOne('SELECT * FROM roles WHERE id = ?', [$id]);
+        if (empty($role)) {
+            Alert::toast('Rol no encontrado', 'error');
             return redirect()->route('roles.index');
         }
-        //Utilizar un try catch para capturar el error de llave foranea
+
         try {
-            //verificar si el rol esta asignado a algun usuario
-            DB::delete('DELETE FROM model_has_roles WHERE role_id = ?', [$id]);
-        } catch (\Exception $e) {
-            //Manejar el error si el rol esta asignado a algun usuario
-            Alert::toast('Error al eliminar el rol: ' . $e->getMessage(), 'error');
+            DB::delete('DELETE FROM roles WHERE id = ?', [$id]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            Alert::toast('No se puede eliminar el rol porque tiene permisos asignados', 'error');
             return redirect()->route('roles.index');
         }
-        //Mostrar un mensaje de Configuracion
-        Alert::toast('Rol eliminado con exito', 'success');
-        //Redirigir al listado de roles
+
+        Alert::toast('Rol eliminado correctamente', 'success');
         return redirect()->route('roles.index');
     }
 }
-

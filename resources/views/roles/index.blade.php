@@ -25,7 +25,7 @@
         <div class="clearfix"></div>
 
         <div class="card">
-            {{-- @include('roles.table') --}}
+            @include('roles.table')
         </div>
     </div>
 
