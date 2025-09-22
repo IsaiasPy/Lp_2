@@ -106,3 +106,9 @@ Route::get('reporte-proveedores', [App\Http\Controllers\ReporteController::class
 
 ## Crear ruta para compras
 Route::resource('compras', App\Http\Controllers\ComprasController::class);
+
+## Ruta role permission
+Route::resource('permissions', App\Http\Controllers\PermissionController::class);
+
+## Ruta para Role
+Route::resource('roles', App\Http\Controllers\RoleController::class);
