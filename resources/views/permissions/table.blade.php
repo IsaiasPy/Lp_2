@@ -1,4 +1,4 @@
-<div class="card-body p-0">
+<div class="p-0 card-body">
     <div class="table-responsive">
         <table class="table" id="permissions-table">
             <thead>
@@ -31,7 +31,7 @@
         </table>
     </div>
 
-    <div class="card-footer clearfix">
+    <div class="clearfix card-footer">
         <div class="float-right">
             {{-- @include('adminlte-templates::common.paginate', ['records' => $permissions]) --}}
         </div>

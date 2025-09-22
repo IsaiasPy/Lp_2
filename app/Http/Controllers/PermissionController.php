@@ -11,106 +11,120 @@ class PermissionController extends Controller
 {
     public function index()
     {
-        //Listar los permisos
-        $permisos = DB::select('select * from permissions order by id desc');
+        // Listar permisos existentes
+        $permisos = DB::select('SELECT * FROM permissions order by id desc');
+
         return view('permissions.index')->with('permisos', $permisos);
     }
+
     public function create()
     {
         return view('permissions.create');
     }
+
     public function store(Request $request)
     {
         $input = $request->all();
-        //Validar qu el campo 'name' no este vacio
+        // Validar que el campo 'name' no esté vacío
         $validacion = Validator::make($input, [
             'name' => 'required|unique:permissions,name',
-        ], 
-        [
-            'name.required' => 'El campo nombre es obligatorio.',
-            'name.unique' => 'El nombre del permiso ya existe.',
+        ], [
+            'name.required' => 'El campo Permiso es obligatorio.',
+            'name.unique' => 'El permiso ya existe en la base de datos.',
         ]);
 
-        //Si la validacion falla redirigir de vuelta con errores
+        // Si la validación falla, redirigir de vuelta con errores
         if ($validacion->fails()) {
             return redirect()->back()->withErrors($validacion)->withInput();
         }
-        //Insertar el nuevo permiso en la base de datos
+
+        // Insertar el nuevo permiso en la base de datos
         DB::insert('INSERT INTO permissions (name, guard_name) VALUES (?, ?)', [
             $input['name'],
-            $input['guard_name']
-        ]);
-         //Mostrar un mensaje de configuracion
-        Alert::toast('Permiso creado con exito', 'success');
-        //Redirigir al listado de permisos
-        return redirect()->route('permissions.index');
-    }
-    public function edit($id)
-    {
-        $permisos = DB::selectone('select * from permissions where id = ?', [$id]);
-        //verificar si se encontro el permiso
-        if (empty($permisos)) {
-            Alert::toast('El permiso no existe', 'error');
-            return redirect()->route('permissions.index');
-        }
-        return view('permissions.edit')->with('permisos', $permisos);
-    }
-    public function update(Request $request, $id)
-    {
-        $input = $request->all();
-        $permisos = DB::selectone('select * from permissions where id = ?', [$id]);
-        //verificar si se encontro el permiso
-        if (empty($permisos)) {
-            Alert::toast('El permiso no existe', 'error');
-            return redirect()->route('permissions.index');
-        }   
-        //Validar que el campo 'name' no este vacio
-        $validacion = Validator::make($input, [
-            'name' => 'required|unique:permissions,name,' . $id,
-        ], 
-        [
-            'name.required' => 'El campo nombre es obligatorio.',
-            'name.unique' => 'El nombre del permiso ya existe.',
+            $input['guard_name'],
         ]);
 
-        //Si la validacion falla redirigir de vuelta con errores
+        // Mostrar un mensaje de confirmación
+        Alert::toast('Permiso creado correctamente', 'success');
+
+        // Redirigir al listado de permisos
+        return redirect()->route('permissions.index');
+    }
+
+    public function edit($id) 
+    {
+        $permisos = DB::selectOne('SELECT * FROM permissions WHERE id = ?', [$id]);
+        // Verificar si se encontró el permiso
+        if (empty($permisos)) {
+            Alert::toast('Permiso no encontrado', 'error');
+            return redirect()->route('permissions.index');
+        }
+
+        return view('permissions.edit')->with('permisos', $permisos);
+    }
+
+    public function update(Request $request, $id) 
+    {
+        $input = $request->all();
+
+        $permisos = DB::selectOne('SELECT * FROM permissions WHERE id = ?', [$id]);
+        // Verificar si se encontró el permiso
+        if (empty($permisos)) {
+            Alert::toast('Permiso no encontrado', 'error');
+            return redirect()->route('permissions.index');
+        }
+
+        // Validar que el campo 'name' no esté vacío y sea único, excluyendo el permiso actual
+        $validacion = Validator::make($input, [
+            'name' => 'required|unique:permissions,name,' . $id,
+        ], [
+            'name.required' => 'El campo Permiso es obligatorio.',
+            'name.unique' => 'El permiso ya existe en la base de datos.',
+        ]);
+
+        // Si la validación falla, redirigir de vuelta con errores
         if ($validacion->fails()) {
             return redirect()->back()->withErrors($validacion)->withInput();
         }
-        //Actualizar el permiso en la base de datos
+
+        // Actualizar el permiso en la base de datos
         DB::update('UPDATE permissions SET name = ?, guard_name = ? WHERE id = ?', [
             $input['name'],
             $input['guard_name'],
-            $id
+            $id,
         ]);
-        //Mostrar un mensaje de configuracion
-        Alert::toast('Permiso actualizado con exito', 'success');
 
-        //Redirigir al listado de permisos
+        // Mostrar un mensaje de confirmación
+        Alert::toast('Permiso actualizado correctamente', 'success');
+
+        // Redirigir al listado de permisos
         return redirect()->route('permissions.index');
     }
-    public function destroy($id)
+
+    public function destroy($id) 
     {
-        $permisos = DB::selectone('select * from permissions where id = ?', [$id]);
-        //verificar si se encontro el permiso
+        $permisos = DB::selectOne('SELECT * FROM permissions WHERE id = ?', [$id]);
+        // Verificar si se encontró el permiso
         if (empty($permisos)) {
-            Alert::toast('El permiso no existe', 'error');
+            Alert::toast('Permiso no encontrado', 'error');
             return redirect()->route('permissions.index');
         }
-        //Utilizar un bloque Try-catch para manejar posibles errores al eliminar
-        try {
-            //Verificar si el permiso esta asignado a algun rol
-           DB::delete('DELETE FROM permissions WHERE id = ?', [$id]);
-        } catch (\Exception $e) {
-            //Manejar el error si el permiso esta asignado a algun rol
+
+        // Utilizar un bloque try-catch para manejar posibles errores al eliminar
+        try{
+            // Eliminar el permiso de la base de datos
+            DB::delete('DELETE FROM permissions WHERE id = ?', [$id]);
+        }catch(\Exception $e){
+            // Manejar el error si el permiso está asignado a algún rol
             Alert::toast('Error al eliminar el permiso: ' . $e->getMessage(), 'error');
             return redirect()->route('permissions.index');
-        }   
+        }
+        
 
-        //Mostrar un mensaje de confirmacion
-        Alert::toast('Permiso eliminado con exito', 'success');
+        // Mostrar un mensaje de confirmación
+        Alert::toast('Permiso eliminado correctamente', 'success');
 
-        //Redirigir al listado de permisos
+        // Redirigir al listado de permisos
         return redirect()->route('permissions.index');
     }
 }

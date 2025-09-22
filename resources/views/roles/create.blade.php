@@ -6,8 +6,7 @@
             <div class="row mb-2">
                 <div class="col-sm-12">
                     <h1>
-                    <i class="fas fa-plus"></i>
-                    Crear Rol
+                    Create Roles
                     </h1>
                 </div>
             </div>
@@ -31,8 +30,8 @@
             </div>
 
             <div class="card-footer">
-                {!! Form::submit('Grabar', ['class' => 'btn btn-primary']) !!}
-                <a href="{{ route('roles.index') }}" class="btn btn-default"> Cancelar </a>
+                {!! Form::submit('Save', ['class' => 'btn btn-primary']) !!}
+                <a href="{{ route('roles.index') }}" class="btn btn-default"> Cancel </a>
             </div>
 
             {!! Form::close() !!}
@@ -40,3 +39,20 @@
         </div>
     </div>
 @endsection
+@push('scripts')
+<script type="text/javascript">
+    $(document).ready(function(){
+        $("#checkall").click(function() {
+            $(".child").prop("checked", this.checked);
+        });
+
+       // $('.child').click(function() {
+         //   if ($('.child:checked').length == $('.child').length) {
+        //    $('#parent').prop('checked', true);
+         //   } else {
+          //  $('#parent').prop('checked', false);
+        //    }
+       // });
+    });
+</script>
+@endpush

@@ -6,7 +6,7 @@
             <div class="row mb-2">
                 <div class="col-sm-12">
                     <h1>
-                        Editar Roles
+                        Edit Roles
                     </h1>
                 </div>
             </div>
@@ -19,7 +19,7 @@
 
         <div class="card">
 
-            {!! Form::model($rol, ['route' => ['roles.update', $rol->id], 'method' => 'patch']) !!}
+            {!! Form::model($roles, ['route' => ['roles.update', $roles->id], 'method' => 'patch']) !!}
 
             <div class="card-body">
                 <div class="row">
@@ -37,3 +37,20 @@
         </div>
     </div>
 @endsection
+@push('scripts')
+<script type="text/javascript">
+    $(document).ready(function(){
+        $("#checkall").click(function() {
+            $(".child").prop("checked", this.checked);
+        });
+
+        $('.child').click(function() {
+            if ($('.child:checked').length == $('.child').length) {
+            $('#parent').prop('checked', true);
+            } else {
+            $('#parent').prop('checked', false);
+            }
+        });
+    });
+</script>
+@endpush

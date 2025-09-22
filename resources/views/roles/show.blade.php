@@ -6,12 +6,12 @@
             <div class="row mb-2">
                 <div class="col-sm-6">
                     <h1>
-                        Detalle de Roles
+                        Roles Details
                     </h1>
                 </div>
                 <div class="col-sm-6">
                     <a class="btn btn-default float-right" href="{{ route('roles.index') }}">
-                        Volver
+                        Back
                     </a>
                 </div>
             </div>

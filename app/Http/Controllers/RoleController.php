@@ -17,8 +17,9 @@ class RoleController extends Controller
     }
     public function create()
     {
+        $permisos = DB::table('permissions')->get();
         //retornar la vista con el formulario de roles create
-        return view('roles.create');
+        return view('roles.create')->with('permisos', $permisos);
     }
     public function store(Request $request)
     {
