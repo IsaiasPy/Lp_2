@@ -2,15 +2,27 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Laracasts\Flash\Flash;
+use RealRashid\SweetAlert\Facades\Alert;
 
-class UserController extends Controller 
+class UserController extends Controller
 {
+    public function __construct()
+    {
+        // validar que el usuario este autenticado
+        $this->middleware('auth');
+        // validar permisos para cada accion
+        $this->middleware('permission:users index')->only(['index']);
+        $this->middleware('permission:users create')->only(['create', 'store']);
+        $this->middleware('permission:users edit')->only(['edit', 'update']);
+        $this->middleware('permission:users destroy')->only(['destroy']);
+    }
     public function index()
     {
         # Listar datos de usuarios
@@ -21,7 +33,9 @@ class UserController extends Controller
 
     public function create()
     {
-        return view('users.create');
+        $roles = DB::table('roles')->pluck('name', 'id');
+
+        return view('users.create')->with('roles', $roles);
     }
 
     public function store(Request $request)
@@ -35,6 +49,7 @@ class UserController extends Controller
             'password' => 'required|min:6',
             'ci' => 'required|unique:users',
             'fecha_ingreso' => 'required|date',
+            'role_id' => 'required|exists:roles,id',
         ], [
             'name.required' => 'El campo Nombre es obligatorio.',
             'email.required' => 'El campo Email es obligatorio.',
@@ -45,6 +60,8 @@ class UserController extends Controller
             'ci.unique' => 'El Nro Documento ya está en uso.',
             'fecha_ingreso.required' => 'El campo Fecha de Ingreso es obligatorio.',
             'fecha_ingreso.date' => 'El campo Fecha de Ingreso debe ser una fecha válida.',
+            'role_id.required' => 'El campo Rol es obligatorio.',
+            'role_id.exists' => 'El Rol seleccionado no es válido.',
         ]);
 
         if ($validacion->fails()) {
@@ -54,18 +71,32 @@ class UserController extends Controller
         // Si la validación pasa, guardar el usuario
         $contrasena = Hash::make($input['password']);
 
-        DB::insert('INSERT INTO users (name, email, password, ci, direccion, telefono, fecha_ingreso) 
-        VALUES (?, ?, ?, ?, ?, ?, ?)', [
-            $input['name'],
-            $input['email'],
-            $contrasena,
-            $input['ci'],
-            $input['direccion'],
-            $input['telefono'],
-            $input['fecha_ingreso'],
-        ]);
+        // Insertar el nuevo usuario en la base de datos utilizando el modelo User
+        $usuario = new User();
+        $usuario->role_id = $input['role_id'];
+        $usuario->name = $input['name'];
+        $usuario->email = $input['email'];
+        $usuario->password = $contrasena;
+        $usuario->ci = $input['ci'];
+        $usuario->direccion = $input['direccion'] ?? null;
+        $usuario->telefono = $input['telefono'] ?? null;
+        $usuario->fecha_ingreso = $input['fecha_ingreso'];
+        $usuario->save();
+        // Asignar el rol al usuario
+        $usuario->roles()->sync($input['role_id']);
 
-        Flash::success('Usuario creado exitosamente.');
+        // DB::insert('INSERT INTO users (name, email, password, ci, direccion, telefono, fecha_ingreso) 
+        // VALUES (?, ?, ?, ?, ?, ?, ?)', [
+        //     $input['name'],
+        //     $input['email'],
+        //     $contrasena,
+        //     $input['ci'],
+        //     $input['direccion'],
+        //     $input['telefono'],
+        //     $input['fecha_ingreso'],
+        // ]);
+
+        Alert::toast('Usuario creado correctamente', 'success');
 
         return redirect(route('users.index'));
     }
@@ -80,7 +111,9 @@ class UserController extends Controller
             return redirect(route('users.index'));
         }
 
-        return view('users.edit')->with('users', $users);
+        $roles = DB::table('roles')->pluck('name', 'id');
+
+        return view('users.edit')->with('users', $users)->with('roles', $roles);
     }
 
     public function update(Request $request, $id) 
@@ -100,6 +133,7 @@ class UserController extends Controller
             'password' => 'nullable|min:6',
             'ci' => 'required|unique:users,ci,' . $users->id, // Excluir el ci del usuario actual de la validacion
             'fecha_ingreso' => 'required|date',
+            'role_id' => 'required|exists:roles,id',
         ], [
             'name.required' => 'El campo Nombre es obligatorio.',
             'email.required' => 'El campo Email es obligatorio.',
@@ -109,6 +143,8 @@ class UserController extends Controller
             'ci.unique' => 'El Nro Documento ya está en uso.',
             'fecha_ingreso.required' => 'El campo Fecha de Ingreso es obligatorio.',
             'fecha_ingreso.date' => 'El campo Fecha de Ingreso debe ser una fecha válida.',
+            'role_id.required' => 'El campo Rol es obligatorio.',
+            'role_id.exists' => 'El Rol seleccionado no es válido.',
         ]);
 
         if ($validacion->fails()) {
@@ -124,19 +160,21 @@ class UserController extends Controller
             $contrasena = $users->password; // Mantener la contraseña sin encriptar
         }
 
-        // Si la validación pasa, actualizar el usuario
-        DB::update('UPDATE users SET name = ?, email = ?, ci = ?, password = ?, direccion = ?, telefono = ?, fecha_ingreso = ? WHERE id = ?', [
-            $input['name'],
-            $input['email'],
-            $input['ci'],
-            $contrasena,
-            $input['direccion'],
-            $input['telefono'],
-            $input['fecha_ingreso'],
-            $id
-        ]);
+        // Actualizar el usuario utilizando el modelo User
+        $usuario = User::where('id', $id)->first();// recuperar el usuario a actualizar
+        $usuario->role_id = $input['role_id'];
+        $usuario->name = $input['name'];
+        $usuario->email = $input['email'];
+        $usuario->password = $contrasena;
+        $usuario->ci = $input['ci'];
+        $usuario->direccion = $input['direccion'] ?? null;
+        $usuario->telefono = $input['telefono'] ?? null;
+        $usuario->fecha_ingreso = $input['fecha_ingreso'];
+        $usuario->save();
+        // Asignar el rol al usuario
+        $usuario->roles()->sync($input['role_id']);
 
-        Flash::success('Usuario actualizado exitosamente.');
+        Alert::toast('Usuario actualizado correctamente', 'success');
 
         return redirect(route('users.index'));
     }

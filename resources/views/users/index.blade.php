@@ -8,11 +8,13 @@
                     <h1>Listado de Usuarios</h1>
                 </div>
                 <div class="col-sm-6">
-                    <a class="btn btn-primary float-right"
-                       href="{{ route('users.create') }}">
-                       <i class="fas fa-plus"></i>
-                        Nuevo Usuario
-                    </a>
+                    @can('users create')
+                        <a class="btn btn-primary float-right"
+                        href="{{ route('users.create') }}">
+                        <i class="fas fa-plus"></i>
+                            Nuevo Usuario
+                        </a>
+                    @endcan
                 </div>
             </div>
         </div>
@@ -20,7 +22,7 @@
 
     <div class="content px-3">
 
-        @include('sweetalert::alert')
+        @include('flash::message')
 
         <div class="clearfix"></div>
 

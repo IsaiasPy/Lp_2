@@ -21,27 +21,33 @@
                         <td>{{ $user->email }}</td>
                         <td>{{ $user->ci }}</td>
                         <td>{{ $user->telefono }}</td>
-                        <td>{{ !empty($user->fecha_ingreso) ? Carbon\Carbon::parse($user->fecha_ingreso)->format('d/m/Y') : '' }}</td>
+                        <td>{{ !empty($user->fecha_ingreso) ? Carbon\Carbon::parse($user->fecha_ingreso)->format('d/m/Y') : '' }}
+                        </td>
                         <td>{{ $user->estado == true ? 'Activo' : 'Inactivo' }}</td>
                         <td style="width: 120px">
                             {!! Form::open(['route' => ['users.destroy', $user->id], 'method' => 'delete']) !!}
                             <div class='btn-group'>
-                                <a href="{{ route('users.edit', [$user->id]) }}" class='btn btn-default btn-xs'>
-                                    <i class="far fa-edit"></i>
-                                </a>
-                                @if($user->estado == true)
-                                    {!! Form::button('<i class="far fa-trash-alt"></i>', [
-                                        'type' => 'submit',
-                                        'class' => 'btn btn-danger btn-xs',
-                                        'onclick' => "return confirm('Desea inactivar el usuario?')",
-                                    ]) !!}
-                                @else
-                                    {!! Form::button('<i class="fas fa-check"></i>', [
+                                @can('users edit')
+                                    <a href="{{ route('users.edit', [$user->id]) }}" class='btn btn-default btn-xs'>
+                                        <i class="far fa-edit"></i>
+                                    </a>
+                                @endcan
+
+                                @can('users destroy')
+                                    @if ($user->estado == true)
+                                        {!! Form::button('<i class="far fa-trash-alt"></i>', [
+                                            'type' => 'submit',
+                                            'class' => 'btn btn-danger btn-xs',
+                                            'onclick' => "return confirm('Desea inactivar el usuario?')",
+                                        ]) !!}
+                                    @else
+                                        {!! Form::button('<i class="fas fa-check"></i>', [
                                             'type' => 'submit',
                                             'class' => 'btn btn-success btn-xs',
                                             'onclick' => "return confirm('Desea activar el usuario?')",
-                                    ]) !!}
-                                @endif
+                                        ]) !!}
+                                    @endif
+                                @endcan
                             </div>
                             {!! Form::close() !!}
                         </td>

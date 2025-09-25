@@ -1,9 +1,10 @@
 <x-laravel-ui-adminlte::adminlte-layout>
 
-<head>
-<title>LP2</title>
-<link rel="icon" href="https://avatars.githubusercontent.com/u/958072?v=4" type="image/x-icon">
-</head>
+    <head>
+        <title>LP@2</title>
+        <link rel="icon" type="image/x-icon" href="">
+    </head>
+
     <body class="hold-transition sidebar-mini layout-fixed">
         <div class="wrapper">
             <!-- Main Header -->
@@ -11,34 +12,34 @@
                 <!-- Left navbar links -->
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="" data-widget="pushmenu" href="#" role="button"><i
+                        <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i
                                 class="fas fa-bars"></i></a>
                     </li>
                 </ul>
 
-                <ul class="navbar-nav ml-auto">
+                <ul class="ml-auto navbar-nav">
                     <li class="nav-item dropdown user-menu">
-                        <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-                            <img src="https://avatars.githubusercontent.com/u/958072?v=4"
+                        <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                            <img src="https://assets.infyom.com/logo/blue_logo_150x150.png"
                                 class="user-image img-circle elevation-2" alt="User Image">
                             <span class="d-none d-md-inline">{{ Auth::user()->name }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
                             <!-- User image -->
                             <li class="user-header bg-primary">
-                                <img src="https://avatars.githubusercontent.com/u/958072?v=4"
+                                <img src="https://assets.infyom.com/logo/blue_logo_150x150.png"
                                     class="img-circle elevation-2" alt="User Image">
                                 <p>
                                     {{ Auth::user()->name }}
-                                    <small>Miembro desde {{ Auth::user()->created_at->format('M. Y') }}</small>
+                                    <small>Member since {{ Auth::user()->created_at->format('M. Y') }}</small>
                                 </p>
                             </li>
                             <!-- Menu Footer-->
                             <li class="user-footer">
-                                <a href="#" class="btn btn-default btn-flat">Perfil</a>
-                                <a href="#" class="btn btn-default btn-flat float-right"
+                                <a href="#" class="btn btn-default btn-flat">Profile</a>
+                                <a href="#" class="float-right btn btn-default btn-flat"
                                     onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
-                                    Cerrar Sesión
+                                    Salir
                                 </a>
                                 <form id="logout-form" action="{{ route('logout') }}" method="POST" class="d-none">
                                     @csrf
@@ -60,22 +61,23 @@
             <!-- Main Footer -->
             <footer class="main-footer">
                 <div class="float-right d-none d-sm-block">
-                    <b>Version</b> 3.1.0
+                    <b>Copyright</b> 3.1.0
                 </div>
-                <strong>Copyright &copy; 2014-2023 <a href="https://adminlte.io">AdminLTE.io</a>.</strong> All rights
-                reserved.
+                <strong>Copyright &copy; 2025 <a href="javascript:void(0)">Curso LP 2</a>.</strong> UTIC.
             </footer>
         </div>
 
-       <!-- Required Scripts -->
-            <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-            {{-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script> --}}
-            <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-        <!-- Cargar codigo Java Script -->
+        <!-- REQUIRED SCRIPTS -->
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+        {{-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script> --}}
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+        <!-- cargar codigo javascript desde los blade -->
         @stack('scripts')
+
         <!-- CUSTOM SCRIPTS -->
         <script>
-        //sweetalert para confirmacion de borrado
+            //sweetalert para confirmacion de borrado
             $('.alert-delete').click(function(event) {
                 var form = $(this).closest("form");
                 event.preventDefault();
@@ -92,7 +94,41 @@
                         if (resultado.value) {
                             form.submit();
                         }
-                    });});
+                    });
+            });
+
+            /** bucador mediante peticiones fetch*/
+            $('.buscar').on('keyup', function() {
+                var query = this.value; // valor del input buscar
+                // Obtener el data-url del parametro input
+                var url = this.getAttribute('data-url');
+                // Fetch para realizar peticion de busqueda
+                fetch(url + '?buscar='
+                    + encodeURIComponent(query), {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest' // Este encabezado indica una solicitud AJAX
+                    }
+                })
+                // respuesta del servidor
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error en la respuesta del servidor');
+                    }
+                    // se espera un HTML como respuesta
+                    return response.text();
+                })
+                .then(data => {
+                    // cargar devuelta el html tabla según lo filtrado
+                    $('.tabla-container').html(data);
+                })
+                .catch(error => {// manejar si hay errores en la consulta
+                    console.error('Hubo un problema con la solicitud Fetch:', error);
+                });
+            });
+
+
             //formato de numeros separador de miles
             function format(input) {
                 // Eliminar puntos previos para evitar problemas con el replace
@@ -114,5 +150,6 @@
                 }
             }
         </script>
+
     </body>
 </x-laravel-ui-adminlte::adminlte-layout>
