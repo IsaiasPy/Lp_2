@@ -6,36 +6,70 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Laracasts\Flash\Flash;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class ProductoController extends Controller
 {
+    // Definir una variable para el path
     private $path;
     public function __construct()
     {
         $this->middleware('auth');
-        $this->path = public_path() . '/img/productos/';
+        // Definir Path para grabar mi archivo recibido
+        $this->path = public_path() . "/img/productos/";
+
     }
     public function index(Request $request)
     {
+        // Obtener el término de búsqueda del request
         $buscar = $request->get('buscar');
-        if(empty($buscar)){
-            $sql = 'WHERE p. descripcion LIKE :buscar or m.descripcion LIKE :buscar or p.id_producto LIKE :buscar';
+        // validar que contenga un valor el buscar
+        $sql = '';// definir una variable sql vacia
+
+        if (!empty($buscar)) {
+            $sql = " WHERE p.descripcion iLIKE '%" . $buscar . "%' 
+            or m.descripcion iLIKE '%" . $buscar . "%' 
+            or cast(p.id_producto as text) iLIKE '%" . $buscar . "%'"; // si tiene valor agregar la condicion a la variable sql
         }
+
+        
+        // Consulta para obtener los productos con la marca asociada y si posee filtros
         $productos = DB::select(
             'SELECT p.*, m.descripcion as marcas 
              FROM productos p
                 JOIN marcas m ON p.id_marca = m.id_marca
-                ' . $sql . '
-            ORDER BY p.id_producto desc',
+             ' . $sql . '
+             ORDER BY p.id_producto desc'
+        );
+
+        // Definimos los valores de paginación
+        $page = $request->input('page', 1);   // página actual (por defecto 1)
+        $perPage = 10;                        // cantidad de registros por página
+        $total = count($productos);           // total de registros
+
+        // Cortamos el array para solo devolver los registros de la página actual
+        $items = array_slice($productos, ($page - 1) * $perPage, $perPage);
+
+        // Creamos el paginador manualmente
+        $productos = new LengthAwarePaginator(
+            $items,        // registros de esta página
+            $total,        // total de registros
+            $perPage,      // registros por página
+            $page,         // página actual
             [
-                'buscar' => '%' . $buscar . '%'
+                'path'  => $request->url(),     // mantiene la ruta base
+                'query' => $request->query(),   // mantiene parámetros como "buscar"
             ]
         );
-        if ($request -> ajax()) {
-            
-            return view('productos.index')->with('productos', $productos);
+
+        // si la accion es buscardor entonces significa que se debe recargar mediante ajax la tabla
+        if ($request->ajax()) {
+            //solo llmamamos a table.blade.php y mediante compact pasamos la variable users
+            return view('productos.table')->with('productos', $productos);
         }
 
+
+        return view('productos.index')->with('productos', $productos);
     }
 
     public function create()
@@ -82,14 +116,18 @@ class ProductoController extends Controller
                 ->withInput();
         }
 
-        // Subir la imagen del producto
+        // Validar con hasFile que exista ese dato
         if ($request->hasFile('imagen_producto')) {
+            // obtener nombre del archivo de imagen con getClientOriginalName
             $imagen = $request->file('imagen_producto')->getClientOriginalName();
 
+            // mover el archivo imagen al path definido
             $request->file('imagen_producto')->move($this->path, $imagen);
         }
-
+        // sobre escribir el atributo imagen_producto de la variable $input
+        // validar con isset() para verificar que exista la variable $imagen
         $input['imagen_producto'] = isset($imagen) ? $imagen : null;
+
 
         // Sacar separador de miles y cambiar  por vacio en el precio
         $precio = str_replace('.', '', $input['precio']);
@@ -173,14 +211,17 @@ class ProductoController extends Controller
                 ->withInput();
         }
 
-        // Subir la imagen del producto
+        // validar con hasFile que exista eese dato
         if ($request->hasFile('imagen_producto')) {
+            // obtener nombre del archivo de imagen con getClientOriginalName
             $imagen = $request->file('imagen_producto')->getClientOriginalName();
 
+            // mover el archivo imagen al path definido
             $request->file('imagen_producto')->move($this->path, $imagen);
         }
-
+        // sobre escribir el atributo imagen_producto de la variable $input
         $input['imagen_producto'] = isset($imagen) ? $imagen : $productos->imagen_producto;
+
 
         // Sacar separador de miles y cambiar  por vacio en el precio
         $precio = str_replace('.', '', $input['precio']);

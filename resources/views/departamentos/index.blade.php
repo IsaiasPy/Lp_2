@@ -23,8 +23,8 @@
         @include('flash::message')
 
         <div class="clearfix"></div>
-
-        <div class="card">
+        @includeIf('layouts.buscador', ['url' => url()->current()])
+        <div class="card tabla-container">
             @include('departamentos.table')
         </div>
     </div>

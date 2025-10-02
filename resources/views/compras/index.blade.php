@@ -16,7 +16,8 @@
 
 <div class="content px-3">
   @include('sweetalert::alert')
-  <div class="card">
+  @includeIf('layouts.buscador', ['url' => url()->current()])
+  <div class="card tabla-container">
     @include('compras.table')
   </div>
 </div>

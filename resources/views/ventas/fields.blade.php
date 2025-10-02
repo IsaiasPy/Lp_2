@@ -1,5 +1,7 @@
 <!-- Id Apertura Field -->
-{!! Form::hidden('id_apertura', null, ['class' => 'form-control']) !!}
+{!! Form::hidden('id_apertura', isset($apertura_caja) ? $apertura_caja->id_apertura : null, [
+    'class' => 'form-control',
+]) !!}
 <!-- Fecha Venta Field -->
 <div class="form-group col-sm-4">
     {!! Form::label('fecha_venta', 'Fecha Venta:') !!}
@@ -14,7 +16,13 @@
 <!-- Factura Nro Field -->
 <div class="form-group col-sm-4">
     {!! Form::label('factura_nro', 'Factura Nro:') !!}
-    {!! Form::text('factura_nro', null, ['class' => 'form-control', 'readonly']) !!}
+    {!! Form::text(
+        'factura_nro',
+        isset($apertura_caja)
+            ? ($apertura_caja->establecimiento . '-' . $apertura_caja->punto_expedicion . '-' . $apertura_caja->nro_factura)
+            : null,
+        ['class' => 'form-control', 'readonly' => 'readonly'],
+    ) !!}
 </div>
 
 <!-- User Id Field -->
@@ -55,12 +63,12 @@
 </div>
 
 <!-- Intervalo de Vencimiento Field -->
-<div class="form-group col-sm-6" id="div-intervalo" style="display: none;"> 
+<div class="form-group col-sm-6" id="div-intervalo" style="display: none;">
     {!! Form::label('intervalo', 'Intervalo de Vencimiento:') !!}
     {!! Form::select('intervalo', $intervalo_vencimiento, null, [
         'class' => 'form-control',
         'placeholder' => 'Seleccione un intervalo',
-        'id' => 'intervalo'
+        'id' => 'intervalo',
     ]) !!}
 </div>
 
@@ -70,12 +78,12 @@
     {!! Form::number('cantidad_cuota', null, [
         'class' => 'form-control',
         'placeholder' => 'Ingrese la cantidad de cuotas',
-        'id' => 'cantidad_cuota'
+        'id' => 'cantidad_cuota',
     ]) !!}
 </div>
 
 <!-- Detalle de venta -->
-<div class="form-group col-sm-12"> 
+<div class="form-group col-sm-12">
     @includeIf('ventas.detalle')
 </div>
 
@@ -83,7 +91,11 @@
 <!-- Total Field -->
 <div class="form-group col-sm-6">
     {!! Form::label('total', 'Total:') !!}
-    {!! Form::text('total', isset($ventas) ? number_format($ventas->total, 0, ',', '.') : null, ['class' => 'form-control', 'id' => 'total', 'readonly']) !!}
+    {!! Form::text('total', isset($ventas) ? number_format($ventas->total, 0, ',', '.') : null, [
+        'class' => 'form-control',
+        'id' => 'total',
+        'readonly',
+    ]) !!}
 </div>
 
 @includeIf('ventas.modal_producto')
@@ -94,14 +106,16 @@
     <script>
         // comenzar la carga con document ready
         $(document).ready(function() {
-            
+
             /** CONSULTAR AJAX PARA LLENAR POR DEFECTO EL MODAL AL ABRIR SE CONSULTA LA URL */
             document.getElementById('buscar').addEventListener('click', function() {
                 $('#productSearchModal').modal('show'); // Mostrar el modal
-                fetch('{{ url('buscar-productos') }}?cod_suc=' + $("#id_sucursal").val())// capturar valor de sucursal utilzando val()
+                fetch('{{ url('buscar-productos') }}?cod_suc=' + $("#id_sucursal")
+                        .val()) // capturar valor de sucursal utilzando val()
                     .then(response => response.text())
                     .then(html => {
-                        document.getElementById('modalResults').innerHTML = html; // innerHTML es para cargar en el modal
+                        document.getElementById('modalResults').innerHTML =
+                            html; // innerHTML es para cargar en el modal
                     })
                     .catch(error => {
                         console.error('Error:', error); // mostrar error en consola
@@ -110,8 +124,8 @@
 
             // Ocultar o mostra campos segun seleccion de condicion de venta
             $("#condicion_venta").on("change", function() {
-                var condicion_venta = $(this).val();// es capturar el dato selecciona con this.val()
-                if(condicion_venta == 'CONTADO') {
+                var condicion_venta = $(this).val(); // es capturar el dato selecciona con this.val()
+                if (condicion_venta == 'CONTADO') {
                     //hide es para ocultar
                     $("#div-intervalo").hide();
                     $("#div-cantidad-cuota").hide();
@@ -120,38 +134,13 @@
                     $("#cantidad_cuota").prop('required', false);
                 } else {
                     //show es para mostrar
-                    $("#div-intervalo").show(); 
+                    $("#div-intervalo").show();
                     $("#div-cantidad-cuota").show();
                     // prop es para asignar una propiedad al campo input y decirle es requerido
                     $("#intervalo").prop('required', true);
                     $("#cantidad_cuota").prop('required', true);
-                    
                 }
             });
-        });
-        
-        $(document).ready(function() {
-
-            // NUEVO: Formatear el total antes de enviar el formulario
-            $('form').on('submit', function() {
-                // Obtener el valor actual del total (con puntos)
-                var totalConFormato = $('#total').val();
-                // Eliminar los puntos para enviar solo el número
-                var totalLimpio = totalConFormato.replace(/\./g, '');
-                // Actualizar el campo hidden con el valor limpio
-                $('#total_valor').val(totalLimpio);
-                // Actualizar el campo total con el valor limpio (temporalmente para el envío)
-                $('#total').val(totalLimpio);
-            });
-
-            // Restaurar el formato visual después del envío (si es necesario)
-            @if (isset($ventas))
-                // Formatear el total al cargar la página para edición
-                var totalValor = {{ $ventas->total }};
-                $('#total').val(totalValor.toLocaleString('es-PY', {
-                    minimumFractionDigits: 0
-                }));
-            @endif
         });
     </script>
 @endpush

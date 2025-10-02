@@ -63,3 +63,13 @@
         'required',
     ]) !!}
 </div>
+
+<!-- Sucursal Id Field -->
+<div class="form-group col-sm-6">
+    {!! Form::label('id_sucursal', 'Sucursal:') !!}
+    {!! Form::select('id_sucursal', $sucursales, null, [
+        'class' => 'form-control',
+        'placeholder' => 'Seleccione una sucursal',
+        'required',
+    ]) !!}
+</div>

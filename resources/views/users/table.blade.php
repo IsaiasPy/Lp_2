@@ -10,6 +10,8 @@
                     <th>Teléfono</th>
                     <th>Fecha Ingreso</th>
                     <th>Estado</th>
+                    <th>Rol</th>
+                    <th>Sucursal</th>
                     <th colspan="3">Acciones</th>
                 </tr>
             </thead>
@@ -24,6 +26,8 @@
                         <td>{{ !empty($user->fecha_ingreso) ? Carbon\Carbon::parse($user->fecha_ingreso)->format('d/m/Y') : '' }}
                         </td>
                         <td>{{ $user->estado == true ? 'Activo' : 'Inactivo' }}</td>
+                        <td>{{ $user->rol }}</td>
+                        <td>{{ $user->sucursal }}</td>
                         <td style="width: 120px">
                             {!! Form::open(['route' => ['users.destroy', $user->id], 'method' => 'delete']) !!}
                             <div class='btn-group'>

@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Laracasts\Flash\Flash;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
+use RealRashid\SweetAlert\Facades\Alert;
+
+use function Laravel\Prompts\error;
 
 class VentaController extends Controller
 {
@@ -22,7 +26,21 @@ class VentaController extends Controller
             order by v.fecha_venta desc"
         );
 
-        return view('ventas.index')->with('ventas', $ventas);
+        // Consulta para recuperar cajas
+        $caja = DB::table('cajas')
+            ->where('id_sucursal', auth()->user()->id_sucursal) // filtrar por sucursal del usuario
+            ->pluck('descripcion', 'id_caja');
+
+        // Validar que el usuario no tenga una caja abierta en la fecha actual
+        $caja_abierta = DB::selectOne(
+            "SELECT * FROM apertura_cierre_cajas 
+            WHERE user_id = ? AND estado = 'ABIERTA'",
+            [auth()->user()->id]
+        );
+
+        return view('ventas.index')->with('ventas', $ventas)
+            ->with('cajas', $caja)
+            ->with('caja_abierta', $caja_abierta);
     }
 
     public function create()
@@ -51,11 +69,42 @@ class VentaController extends Controller
         // Enviar datos de sucursales
         $sucursales = DB::table('sucursales')->pluck('descripcion', 'id_sucursal');
 
+        // enviar datos de apertura de caja a ventas 
+        $apertura_caja = DB::selectOne(
+            "SELECT ap.id_apertura,
+                ap.fecha_apertura,
+                lpad('1', 3, '0')as establecimiento,
+                lpad(cast(c.punto_expedicion as text), 3, '0')as punto_expedicion,
+                lpad(cast(coalesce(max(c.ultima_factura_impresa), 0) + 1 as text), 7, '0') as nro_factura
+            FROM apertura_cierre_cajas ap
+                JOIN cajas c on c.id_caja = ap.id_caja 
+            WHERE ap.user_id = ? and ap.estado = 'ABIERTA'
+            GROUP BY
+            ap.id_apertura,
+            ap.fecha_apertura,
+            c.punto_expedicion,
+            c.ultima_factura_impresa",
+            [auth()->user()->id]
+        );
+
+        // validar que no exista una caja abierta para el usuario en la fecha pasada
+        if (
+            !empty($apertura_caja) 
+            && Carbon::parse($apertura_caja->fecha_apertura)->format('Y-m-d') 
+            < Carbon::now()->format('Y-m-d')
+        ) 
+        {
+            Alert::toast('Debe cerrar la caja abierta para poder realizar una venta', 'error');
+            // retornar al index de ventas
+            return redirect()->route('ventas.index');
+        }
+
         return view('ventas.create')->with('clientes', $clientes)
             ->with('usuario', $usuario)
             ->with('condicion_venta', $condicion_venta)
             ->with('intervalo_vencimiento', $intervalo_vencimiento)
-            ->with('sucursales', $sucursales);
+            ->with('sucursales', $sucursales)
+            ->with('apertura_caja', $apertura_caja);
     }
 
     public function store(Request $request)
@@ -103,8 +152,6 @@ class VentaController extends Controller
         // Agregar transacciones
         DB::beginTransaction();
         try {
-             $totalLimpio = str_replace('.', '', $input['total'] ?? '0');
-
             $ventas = DB::table('ventas')->insertGetId([
                 'id_cliente' => $input['id_cliente'],
                 'condicion_venta' => $input['condicion_venta'],
@@ -113,10 +160,10 @@ class VentaController extends Controller
                 'fecha_venta' => $input['fecha_venta'],
                 'factura_nro' => $input['factura_nro'] ?? '0',
                 'user_id' => $user_id,
-                'total' => $totalLimpio,  // <-- USAMOS EL VALOR LIMPIO SIN PUNTOS
+                'total' => $input['total'] ?? 0,
                 'id_sucursal' => $input['id_sucursal'],
                 'estado' => 'COMPLETADO'
-           ],'id_venta');
+            ], 'id_venta');
 
             // insertar detalle ventas
             $subtotal = 0;
@@ -255,8 +302,6 @@ class VentaController extends Controller
             Flash::error('Venta no encontrada');
             return redirect()->route('ventas.index');
         }
-        $input['intervalo'] = $input['intervalo'] ?? 0;
-        $input['cantidad_cuota'] = $input['cantidad_cuota'] ?? 0;
 
         // Validaciones personalizadas para el formulario ventas
         $validacion = Validator::make(
@@ -285,14 +330,12 @@ class VentaController extends Controller
 
         DB::beginTransaction();
         try {
-            $totalLimpio = str_replace('.', '', $input['total'] ?? 0); 
             // Actualizar la venta
-            DB::update('UPDATE ventas SET condicion_venta = ?, intervalo = ?, cantidad_cuota = ?, id_sucursal = ?, total = ? WHERE id_venta = ?', [
+            DB::update('UPDATE ventas SET condicion_venta = ?, intervalo = ?, cantidad_cuota = ?, id_sucursal = ? WHERE id_venta = ?', [
                 $input['condicion_venta'],
                 $input['intervalo'],
                 $input['cantidad_cuota'],
                 $input['id_sucursal'],
-                $totalLimpio,
                 $id
             ]);
 
@@ -324,15 +367,17 @@ class VentaController extends Controller
                             $ventas->id_sucursal
                         ]);
                     }
-                }else{
+                } else {
                     // Si no existe insertar nuevo detalle
-                    DB::insert('INSERT INTO detalle_ventas (id_venta, id_producto, cantidad, precio) VALUES (?, ?, ?, ?)', 
-                    [
-                        $id,
-                        $codigo,
-                        $input['cantidad'][$key],
-                        $monto
-                    ]);
+                    DB::insert(
+                        'INSERT INTO detalle_ventas (id_venta, id_producto, cantidad, precio) VALUES (?, ?, ?, ?)',
+                        [
+                            $id,
+                            $codigo,
+                            $input['cantidad'][$key],
+                            $monto
+                        ]
+                    );
 
                     // Disminuir stock
                     DB::update('UPDATE stocks SET cantidad = cantidad - ? WHERE id_producto = ? AND id_sucursal = ?', [
@@ -344,7 +389,6 @@ class VentaController extends Controller
             }
             // Si todo esta bien realiza el envio e inserta la venta y detalle
             DB::commit();
-
         } catch (\Exception $e) {
             Log::info('Error al actualizar la venta: ' . $e->getMessage());
             DB::rollback();

@@ -22,8 +22,8 @@
         @include('sweetalert::alert')
 
         <div class="clearfix"></div>
-
-        <div class="card">
+        @includeIf('layouts.buscador', ['url' => url()->current()])
+        <div class="card tabla-container">
             @include('permissions.table')
         </div>
     </div>

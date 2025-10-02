@@ -112,3 +112,6 @@ Route::resource('permissions', App\Http\Controllers\PermissionController::class)
 
 ## Ruta para Role
 Route::resource('roles', App\Http\Controllers\RoleController::class);
+
+## Ruta para apertura cierre de caja
+Route::resource('apertura-cierre-caja', App\Http\Controllers\AperturaCierreCajaController::class);

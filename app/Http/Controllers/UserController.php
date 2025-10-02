@@ -26,7 +26,11 @@ class UserController extends Controller
     public function index()
     {
         # Listar datos de usuarios
-        $users = DB::select('SELECT * FROM users ORDER BY id DESC');
+        $users = DB::select('SELECT u.*, r.name as rol, s.descripcion as sucursal 
+        FROM users u
+            LEFT JOIN roles r ON u.role_id = r.id 
+            LEFT JOIN sucursales s ON u.id_sucursal = s.id_sucursal 
+        ORDER BY id DESC');
 
         return view('users.index')->with('users', $users);
     }
@@ -34,8 +38,9 @@ class UserController extends Controller
     public function create()
     {
         $roles = DB::table('roles')->pluck('name', 'id');
+        $sucursales = DB::table('sucursales')->pluck('descripcion', 'id_sucursal');
 
-        return view('users.create')->with('roles', $roles);
+        return view('users.create')->with('roles', $roles)->with('sucursales', $sucursales);
     }
 
     public function store(Request $request)
@@ -50,6 +55,7 @@ class UserController extends Controller
             'ci' => 'required|unique:users',
             'fecha_ingreso' => 'required|date',
             'role_id' => 'required|exists:roles,id',
+            'id_sucursal' => 'required|exists:sucursales,id_sucursal',
         ], [
             'name.required' => 'El campo Nombre es obligatorio.',
             'email.required' => 'El campo Email es obligatorio.',
@@ -62,6 +68,8 @@ class UserController extends Controller
             'fecha_ingreso.date' => 'El campo Fecha de Ingreso debe ser una fecha válida.',
             'role_id.required' => 'El campo Rol es obligatorio.',
             'role_id.exists' => 'El Rol seleccionado no es válido.',
+            'id_sucursal.required' => 'El campo Sucursal es obligatorio.',
+            'id_sucursal.exists' => 'La Sucursal seleccionada no es válida.',
         ]);
 
         if ($validacion->fails()) {
@@ -81,6 +89,7 @@ class UserController extends Controller
         $usuario->direccion = $input['direccion'] ?? null;
         $usuario->telefono = $input['telefono'] ?? null;
         $usuario->fecha_ingreso = $input['fecha_ingreso'];
+        $usuario->id_sucursal = $input['id_sucursal'];
         $usuario->save();
         // Asignar el rol al usuario
         $usuario->roles()->sync($input['role_id']);
@@ -112,8 +121,9 @@ class UserController extends Controller
         }
 
         $roles = DB::table('roles')->pluck('name', 'id');
+        $sucursales = DB::table('sucursales')->pluck('descripcion', 'id_sucursal');
 
-        return view('users.edit')->with('users', $users)->with('roles', $roles);
+        return view('users.edit')->with('users', $users)->with('roles', $roles)->with('sucursales', $sucursales);
     }
 
     public function update(Request $request, $id) 
@@ -134,6 +144,7 @@ class UserController extends Controller
             'ci' => 'required|unique:users,ci,' . $users->id, // Excluir el ci del usuario actual de la validacion
             'fecha_ingreso' => 'required|date',
             'role_id' => 'required|exists:roles,id',
+            'id_sucursal' => 'required|exists:sucursales,id_sucursal',
         ], [
             'name.required' => 'El campo Nombre es obligatorio.',
             'email.required' => 'El campo Email es obligatorio.',
@@ -145,6 +156,8 @@ class UserController extends Controller
             'fecha_ingreso.date' => 'El campo Fecha de Ingreso debe ser una fecha válida.',
             'role_id.required' => 'El campo Rol es obligatorio.',
             'role_id.exists' => 'El Rol seleccionado no es válido.',
+            'id_sucursal.required' => 'El campo Sucursal es obligatorio.',
+            'id_sucursal.exists' => 'La Sucursal seleccionada no es válida.',
         ]);
 
         if ($validacion->fails()) {
@@ -170,6 +183,7 @@ class UserController extends Controller
         $usuario->direccion = $input['direccion'] ?? null;
         $usuario->telefono = $input['telefono'] ?? null;
         $usuario->fecha_ingreso = $input['fecha_ingreso'];
+        $usuario->id_sucursal = $input['id_sucursal'];
         $usuario->save();
         // Asignar el rol al usuario
         $usuario->roles()->sync($input['role_id']);
