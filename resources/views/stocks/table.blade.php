@@ -3,6 +3,7 @@
         <table class="table" id="stocks-table">
             <thead>
             <tr>
+                <th>#</th>
                 <th>Producto</th>
                 <th>Sucursal</th>
                 <th>Cantidad</th>
@@ -12,6 +13,7 @@
             <tbody>
             @foreach($stocks as $stock)
                 <tr>
+                    <td>{{ $stock->id_stock }}</td>
                     <td>{{ $stock->id_producto }}</td>
                     <td>{{ $stock->id_sucursal }}</td>
                     <td>{{ $stock->cantidad }}</td>
