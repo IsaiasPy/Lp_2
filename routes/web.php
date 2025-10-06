@@ -115,3 +115,6 @@ Route::resource('roles', App\Http\Controllers\RoleController::class);
 
 ## Ruta para apertura cierre de caja
 Route::resource('apertura-cierre-caja', App\Http\Controllers\AperturaCierreCajaController::class);
+
+## Ruta para Stock
+Route::resource('stocks', App\Http\Controllers\StockController::class);
