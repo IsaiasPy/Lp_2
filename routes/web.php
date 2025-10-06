@@ -118,3 +118,6 @@ Route::resource('apertura-cierre-caja', App\Http\Controllers\AperturaCierreCajaC
 
 ## Ruta para Stock
 Route::resource('stocks', App\Http\Controllers\StockController::class);
+
+## Ruta para imprimir factura
+Route::get('imprimir-factura/{id}', [App\Http\Controllers\VentaController::class, 'factura']);

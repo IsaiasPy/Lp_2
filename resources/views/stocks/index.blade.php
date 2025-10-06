@@ -25,7 +25,7 @@
         <div class="clearfix"></div>
         @includeIf('layouts.buscador', ['url' => url()->current()])
         <div class="card">
-            {{-- @include('stocks.table') --}}
+            @include('stocks.table')
         </div>
     </div>
 

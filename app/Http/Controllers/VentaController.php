@@ -10,6 +10,7 @@ use Laracasts\Flash\Flash;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use RealRashid\SweetAlert\Facades\Alert;
+use Luecano\NumeroALetras\NumeroALetras;
 
 use function Laravel\Prompts\error;
 
@@ -528,4 +529,37 @@ class VentaController extends Controller
         $pdf = Pdf::loadView('ventas.invoice', compact('data'));
         return $pdf->download('invoice.pdf');
     }
+
+    public function factura($id)
+    {
+    $ventas = DB::selectOne("SELECT v.*, concat(c.clie_nombre,' ', c.clie_apellido) as cliente, c.clie_ci,
+            users.name as usuario, c.clie_direccion, c.clie_telefono
+            FROM ventas v
+                JOIN clientes c ON v.id_cliente = c.id_cliente
+                JOIN users ON v.user_id = users.id
+            WHERE v.id_venta = ?");
+
+    if (empty($ventas)) {
+        Flash::error('Venta no encontrada');
+        return redirect()->route('ventas.index');
+    }
+
+    //recuperar detalle de ventas
+    $detalle_venta = DB::select(
+        'SELECT dv.id_venta, dv.id_producto, p.descripcion, dv.cantidad, dv.precio
+        FROM detalle_ventas dv
+        JOIN productos p ON dv.id_producto = p.id_producto
+        WHERE dv.id_venta = ?',
+        [$id]
+    );
+    //Libreria paera convertir numeros a letras
+    $formateo = new NumeroALetras();
+    $numero_a_letras = $formateo->toWords($ventas->total); //recuperar total de la venta y convertirlo a letras
+    
+    return view('ventas.factura')->with('ventas', $ventas)
+    ->with('detalle_venta', $detalle_venta)
+    ->with('numero_a_letras', $numero_a_letras);
+
+    }
+    
 }
