@@ -20,12 +20,13 @@
 
     <div class="content px-3">
 
-        @include('sweetalert::alert')
+        @include('flash::message')
 
         <div class="clearfix">
-        @includeIf('layouts.buscador', ['url' => url()->current()])
-        </div>
             @includeIf('layouts.buscador', ['url' => url()->current()])
+        </div>
+
+        <!-- agregar la clase tabla-container para mostrar los valores filtrados de table-->
         <div class="card tabla-container">
             @include('productos.table')
         </div>

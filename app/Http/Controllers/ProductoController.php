@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Laracasts\Flash\Flash;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\LengthAwarePaginator;// libreria a importar para paginacion manual
 
 class ProductoController extends Controller
 {
@@ -31,7 +31,6 @@ class ProductoController extends Controller
             or m.descripcion iLIKE '%" . $buscar . "%' 
             or cast(p.id_producto as text) iLIKE '%" . $buscar . "%'"; // si tiene valor agregar la condicion a la variable sql
         }
-
         
         // Consulta para obtener los productos con la marca asociada y si posee filtros
         $productos = DB::select(
@@ -63,7 +62,7 @@ class ProductoController extends Controller
         );
 
         // si la accion es buscardor entonces significa que se debe recargar mediante ajax la tabla
-        if ($request->ajax()) {
+        if ($request->ajax()) {// devuelve true o false si es ajax o no
             //solo llmamamos a table.blade.php y mediante compact pasamos la variable users
             return view('productos.table')->with('productos', $productos);
         }

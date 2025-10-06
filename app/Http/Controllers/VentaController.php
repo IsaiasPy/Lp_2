@@ -15,7 +15,7 @@ use function Laravel\Prompts\error;
 
 class VentaController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $ventas = DB::select(
             "SELECT v.*, concat(c.clie_nombre,' ', c.clie_apellido) as cliente, c.clie_ci,
@@ -66,8 +66,9 @@ class VentaController extends Controller
             '30' => '30 Días'
         ];
 
-        // Enviar datos de sucursales
-        $sucursales = DB::table('sucursales')->pluck('descripcion', 'id_sucursal');
+        // Enviar datos de sucursales segun sucursal del usuario
+        $sucursales = DB::table('sucursales')->where('id_sucursal', auth()->user()->id_sucursal)
+                                             ->pluck('descripcion', 'id_sucursal');
 
         // enviar datos de apertura de caja a ventas 
         $apertura_caja = DB::selectOne(
@@ -110,7 +111,6 @@ class VentaController extends Controller
     public function store(Request $request)
     {
         $input = $request->all();
-
         // Para que el validator no falle al momento de validacion require_if
         $input['intervalo'] = $input['intervalo'] ?? 0;
         $input['cantidad_cuota'] = $input['cantidad_cuota'] ?? 0;
@@ -123,7 +123,10 @@ class VentaController extends Controller
                 'intervalo' => 'required_if:condicion_venta,CREDITO|in:0,7,15,30',
                 'cantidad_cuota' => 'required_if:condicion_venta,CREDITO|integer',
                 'fecha_venta' => 'required|date',
-                'user_id' => 'required|exists:users,id'
+                'user_id' => 'required|exists:users,id',
+                'id_apertura' => 'required|exists:apertura_cierre_cajas,id_apertura',
+                'id_sucursal' => 'required|exists:sucursales,id_sucursal',
+                'factura_nro' => 'nullable|string|max:15',
             ],
             [
                 'id_cliente.required' => 'El campo cliente es obligatorio.',
@@ -137,12 +140,34 @@ class VentaController extends Controller
                 'fecha_venta.required' => 'El campo fecha de venta es obligatorio.',
                 'fecha_venta.date' => 'El campo fecha de venta debe ser una fecha válida.',
                 'user_id.required' => 'El campo usuario es obligatorio.',
-                'user_id.exists' => 'El usuario seleccionado no es válido.'
+                'user_id.exists' => 'El usuario seleccionado no es válido.',
+                'id_apertura.required' => 'El campo apertura es obligatorio.',
+                'id_apertura.exists' => 'La apertura seleccionada no es válida.',
+                'id_sucursal.required' => 'El campo sucursal es obligatorio.',
+                'id_sucursal.exists' => 'La sucursal seleccionada no es válida.',
+                'factura_nro.max' => 'El número de factura no debe exceder los 15 caracteres.',
             ]
         );
 
         if ($validacion->fails()) {
             return redirect()->back()->withErrors($validacion)->withInput();
+        }
+
+        // validar que la nro de factura sea unica
+        if (!empty($input['factura_nro'])){
+            // buscamos si ya existe la factura
+            $factura_exist = DB::selectOne('SELECT * FROM ventas WHERE factura_nro = ?', [$input['factura_nro']]);
+            // si existe mostramos error
+            if (!empty($factura_exist)){
+                Alert::toast('El número de factura ya existe', 'error');
+                return redirect()->back()->withInput($input);
+            }
+        }
+        
+        // validar fecha de venta no sea mayor a la fecha actual
+        if (Carbon::parse($input['fecha_venta'])->format('Y-m-d') > Carbon::now()->format('Y-m-d')) {
+            Alert::toast('La fecha de venta no puede ser mayor a la fecha actual', 'error');
+            return redirect()->back()->withInput($input);
         }
 
         // Si la validación pasa, continuar con el almacenamiento de la venta
@@ -162,7 +187,8 @@ class VentaController extends Controller
                 'user_id' => $user_id,
                 'total' => $input['total'] ?? 0,
                 'id_sucursal' => $input['id_sucursal'],
-                'estado' => 'COMPLETADO'
+                'estado' => 'COMPLETADO',
+                'id_apertura' => $input['id_apertura'],
             ], 'id_venta');
 
             // insertar detalle ventas
@@ -198,17 +224,30 @@ class VentaController extends Controller
                     $ventas
                 ]);
             }
+
+            // actualizar la ultima factura impresa en cajas si es que se envio un nro de factura
+            if (!empty($input['factura_nro'])) {    
+                // extraer el nro de factura utilizando explode en la posicion 2
+                // 001-002-0000001
+                $factura_nro = explode('-', $input['factura_nro'])[2];
+                // update de cajas y recuperar segun la apertura de caja el codigo de id_caja utilizando subconsulta
+                DB::update('UPDATE cajas SET ultima_factura_impresa = ? 
+                WHERE id_caja = (SELECT id_caja FROM apertura_cierre_cajas WHERE id_apertura = ?)', [
+                    (int) $factura_nro, // convertir a entero para quitar ceros a la izquierda
+                    $input['id_apertura']
+                ]);
+            }
             // Si todo esta bien realiza el envio e inserta la venta y detalle
             DB::commit();
         } catch (\Exception $e) {
             // si algo salio mal lo revertimos
             Log::info('Error al registrar la venta: ' . $e->getMessage());
             DB::rollback();
-            return redirect()->back()->withErrors($e->getMessage());
+            return redirect()->back()->withErrors($e->getMessage())->withInput($request->all());
         }
 
 
-        Flash::success('Venta registrada exitosamente.');
+        Alert::toast('Venta registrada exitosamente.', 'success');
         return redirect()->route('ventas.index');
     }
 
@@ -226,7 +265,7 @@ class VentaController extends Controller
         );
 
         if (empty($venta)) {
-            Flash::error('Venta no encontrada');
+            Alert::toast('Venta no encontrada', 'error');
             return redirect()->route('ventas.index');
         }
 
@@ -271,8 +310,9 @@ class VentaController extends Controller
             '30' => '30 Días'
         ];
 
-        // Enviar datos de sucursales
-        $sucursales = DB::table('sucursales')->pluck('descripcion', 'id_sucursal');
+        // Enviar datos de sucursales segun sucursal del usuario
+        $sucursales = DB::table('sucursales')->where('id_sucursal', auth()->user()->id_sucursal)
+                                        ->pluck('descripcion', 'id_sucursal');
 
         // obtener los detalles de ventas
         $detalle_venta = DB::select(

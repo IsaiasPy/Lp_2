@@ -14,13 +14,13 @@
             <!-- Botón para abrir el modal -->
             <div class="col-12 col-sm-12">
                 <button type="button" class="btn btn-primary" id="buscar" style="float: right">
-                    <i class="fas fa-search"></i> Buscar Producto
+                    <i class="fas fa-search" aria-hidden="true"></i> Buscar Producto
                 </button>
             </div>
             
             <div class="table-responsive">
                 <br>
-                <table class="table item-table">
+                <table class="table item-table detalle-venta">
                     <thead>
                         <tr>
                             <th style="width:12%;">#</th>
@@ -34,33 +34,33 @@
                     <tbody id="selectedProducts">
                         <!-- Los productos seleccionados se agregarán aquí --> 
 
-                        <!-- si la funcion es editar preguntamos si existe la variable $det_venta -->
-                        @if (isset($det_venta))
-                            @foreach ($det_venta as $value)
+                        <!-- si la funcion es editar preguntamos si existe la variable $detalle_venta -->
+                        @if (isset($detalle_venta))
+                            @foreach ($detalle_venta as $value)
                             <tr>
                                 <td class="text-center">
-                                    <input class="form-control text-center" type="text" name="codigo[]" readonly style="text-align: center"
+                                    <input class="text-center form-control" type="text" name="codigo[]" readonly style="text-align: center"
                                         value="{!! $value->id_producto !!}">
                                 </td>
                                 <td>
                                     <input type="text" class="form-control" name="producto[]" readonly
                                         placeholder="Buscar productos" value="{!! $value->descripcion !!}">
                                     {!! Form::hidden('id_producto[]', $value->id_producto) !!}
-                                    {!! Form::hidden('id_det_venta[]', $value->id_det_venta) !!}
+                                    {!! Form::hidden('id_det_venta[]', $value->id_detalle_venta) !!}
                                 </td>
                             
                                 <td class="text-center">
-                                    <input class="form-control text-center" type="number" min="1" name="cantidad[]" readonly
+                                    <input class="text-center form-control" type="number" min="1" name="cantidad[]" readonly
                                         style="text-align: center" value="{!! $value->cantidad !!}">
                                 </td>
                             
                                 <td class="text-center" style="width: 20%">
-                                    <input class="form-control text-center" type="text" name="precio[]" readonly
+                                    <input class="text-center form-control" type="text" name="precio[]" readonly
                                         style="text-align: center" value="{!! number_format($value->precio, 0, ',', '.') !!}">
                                 </td>
                             
                                 <td class="text-center">
-                                    <input class="form-control text-center" type="text" name="subtotal[]" readonly
+                                    <input class="text-center form-control" type="text" name="subtotal[]" readonly
                                         value="{!! number_format($value->precio * $value->cantidad, 0, ',', '.') !!}" style="text-align: center">
                                 </td>
                             

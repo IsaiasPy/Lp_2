@@ -49,7 +49,8 @@
                 });
         });
 
-        function seleccionarProducto(codigo, producto, precio) {
+        // se agrega parametro cantidad con valor por defecto 1, subtotal igual a precio
+        function seleccionarProducto(codigo, producto, precio, subtotal = precio, cantidad = 1) {
             // Obtener todas las filas de la tabla que fue seleccionado
             let filas = document.getElementById('selectedProducts').getElementsByTagName('tr');
 
@@ -70,9 +71,9 @@
             row.innerHTML = `
                 <td><input type="text" name="codigo[]" class="form-control" value="${codigo}" readonly></td>
                 <td><input type="text" name="producto[]" class="form-control" value="${producto}" readonly></td>
-                <td><input type="number" name="cantidad[]" class="text-center form-control" value="1" min="1" oninput="calcularSubtotal(this)"></td>
+                <td><input type="number" name="cantidad[]" class="text-center form-control" value="${cantidad}" min="1" oninput="calcularSubtotal(this)"></td>
                 <td><input type="text" name="precio[]" class="text-center form-control" value="${formatMoney(precio, 0)}" readonly></td>
-                <td><input type="text" name="subtotal[]" class="text-center form-control" value="${formatMoney(precio, 0)}" readonly></td>
+                <td><input type="text" name="subtotal[]" class="text-center form-control" value="${formatMoney(subtotal, 0)}" readonly></td>
                 <td><button type="button" class="btn btn-danger" onclick="borrar(this)"><i class="far fa-trash-alt"></i></button></td>
             `;
 
@@ -135,6 +136,7 @@
             return s + (j ? i.substr(0, j) + t : "") + i.substr(j).replace(/(\d{3})(?=\d)/g, "$1" + t) +
                 (c ? d + Math.abs(n - i).toFixed(c).slice(2) : "");
         }
+
        
 </script>
 @endpush

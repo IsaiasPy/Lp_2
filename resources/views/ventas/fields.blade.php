@@ -36,7 +36,7 @@
 <div class="form-group col-sm-4">
     {!! Form::label('id_cliente', 'Cliente:') !!}
     {!! Form::select('id_cliente', $clientes, null, [
-        'class' => 'form-control',
+        'class' => 'form-control select2',
         'required',
         'placeholder' => 'Seleccione un cliente',
     ]) !!}
@@ -100,6 +100,9 @@
 
 @includeIf('ventas.modal_producto')
 
+<!-- definir un campo oculto para almacenar el detalle enviado -->
+<input type="hidden" id="detalle_data" name="detalle_data">
+
 <!-- Js -->
 @push('scripts')
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -141,6 +144,43 @@
                     $("#cantidad_cuota").prop('required', true);
                 }
             });
+
+            // al enviar el formulario capturamos los datos del detalle
+            $('form').on('submit', function(event) {
+                // Capturar los datos de la tabla de detalles
+                const detalleData = [];
+                $(".detalle-venta tbody tr").each(function() {// recorrer cada fila de la tabla
+                    const row = $(this);
+                    const detalle = {
+                        id_producto: row.find("[name='id_producto[]']").val(),
+                        codigo: row.find("[name='codigo[]']").val(),
+                        precio: parseFloat(row.find("[name='precio[]']").val().replace(/\./g, '')),
+                        producto: row.find("[name='producto[]']").val(),
+                        cantidad: row.find("[name='cantidad[]']").val(),
+                        subtotal: parseFloat(row.find("[name='subtotal[]']").val().replace(/\./g, '')),
+                    };
+                    // agregar el objeto detalle al array
+                    detalleData.push(detalle);
+                });
+
+                // Convertir los datos a JSON y asignarlos al campo oculto
+                $("#detalle_data").val(JSON.stringify(detalleData));
+            });
+
+            // Repoblar la tabla con datos antiguos si existen
+            const oldDetalleData = @json(old('detalle_data', '[]'));
+            if (oldDetalleData.length > 0) {
+                const detalleData = JSON.parse(oldDetalleData);
+                detalleData.forEach(detalle => {
+                    seleccionarProducto(
+                        detalle.codigo || '',
+                        detalle.producto || '',
+                        detalle.precio || 0,
+                        detalle.subtotal || detalle.precio,
+                        detalle.cantidad || 1
+                    );
+                });
+            }
         });
     </script>
 @endpush

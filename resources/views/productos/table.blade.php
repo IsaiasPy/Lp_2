@@ -4,7 +4,7 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Producto</th>
+                        <th>Imagen</th>
                         <th>Descripción</th>
                         <th>Precio</th>
                         <th>Tipo Iva</th>
@@ -15,15 +15,15 @@
                 <tbody>
                     @foreach ($productos as $producto)
                         <tr>
-                        <td>{{ $producto->id_producto }}</td>
-                        <td>
-                        @if($producto->imagen_producto)
-                            <img src="{{ asset('img/productos/' . $producto->imagen_producto) }}" alt="Imagen del producto"
-                            style="max-width: 50px; max-height: 50px;">
-                        @else
-                            No hay Imagen
-                        @endif
-                        </td>
+                            <td>{{ $producto->id_producto }}</td>
+                            <td>
+                                @if ($producto->imagen_producto)
+                                    <img src="{{ asset('img/productos/' . $producto->imagen_producto) }}"
+                                        alt="Imagen del Producto" style="width: 80px; height: 50px; display: block; margin: auto;">
+                                @else
+                                    No hay imagen
+                                @endif
+                            </td>
                             <td>{{ $producto->descripcion }}</td>
                             <td>{{ number_format($producto->precio, 0, ',', '.') }}</td>
                             <td>{{ $producto->tipo_iva }}</td>
@@ -51,7 +51,7 @@
 
         <div class="card-footer clearfix">
             <div class="float-right">
-                {{-- @include('adminlte-templates::common.paginate', ['records' => $productos]) --}}
+                @include('adminlte-templates::common.paginate', ['records' => $productos])
             </div>
         </div>
     </div>

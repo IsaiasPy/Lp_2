@@ -1,6 +1,5 @@
 <!-- Apertura Cierre -->
-<div class="modal fade" id="apertura" tabindex="null" role="dialog"
-aria-labelledby="myModalLabel" aria-hidden="true">
+<div class="modal fade" id="apertura" tabindex="null" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
             <!-- Modal Header -->
@@ -15,27 +14,28 @@ aria-labelledby="myModalLabel" aria-hidden="true">
                     <div class="row">
                         <div class="form-group col-xs-12 col-md-12 col-lg-12">
                             <label>Fecha Apertura </label>
-                            {!! Form::date('fecha_apertura', \Carbon\Carbon::now()->format('Y-m-d'),
-                            ['class' => 'form-control', 'readonly' => 'readonly']) !!}
+                            {!! Form::date('fecha_apertura', \Carbon\Carbon::now()->format('Y-m-d'), [
+                                'class' => 'form-control',
+                                'readonly' => 'readonly',
+                            ]) !!}
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="form-group col-xs-12 col-md-12 col-lg-12">
                             <label>Caja </label>
-                           {!! Form::select('id_caja', $cajas, null,
-                                ['class' => 'form-control',
+                            {!! Form::select('id_caja', $cajas, null, [
+                                'class' => 'form-control',
                                 'required' => 'required',
-                                'placeholder' => 'Seleccione..'])
-                           !!}
+                                'placeholder' => 'Seleccione..',
+                            ]) !!}
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="form-group col-xs-12 col-md-6 col-lg-6">
                             <label>Monto Apertura</label>
-                            {!! Form::text('monto_apertura', null,
-                            ['class' => 'form-control', 'onkeyup' => 'format(this)']) !!}
+                            {!! Form::text('monto_apertura', null, ['class' => 'form-control', 'onkeyup' => 'format(this)']) !!}
                         </div>
                         <div class="form-group col-xs-12 col-md-6 col-lg-6">
                             <label>Monto Cierre</label>

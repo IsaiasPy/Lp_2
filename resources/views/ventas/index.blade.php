@@ -22,9 +22,9 @@
                     <!-- Verificar si la caja esta cerrada entonces muestro el boton abrir caja -->
                     @if(empty($caja_abierta))
                         <a class="btn btn-default float-right mr-2"
-                            data-toggle="modal"
+                            data-toggle="modal" 
                             data-target="#apertura"
-                            href="a">
+                            href="#">
                             <i class="fas fa-cart-plus"></i>
                             Abrir Caja
                         </a>
@@ -45,6 +45,8 @@
     </section>
 
     <div class="content px-3">
+
+        {{-- @include('flash::message') --}}
         @include('adminlte-templates::common.errors')
         @include('sweetalert::alert')
 
@@ -57,5 +59,7 @@
         </div>
     </div>
 
-    @include('ventas.modal_apertura', ['cajas' => $cajas])
+    <!-- Modal Apertura Caja y compartir la variable cajas-->
+    @includeIf('ventas.modal_apertura', ['cajas' => $cajas])
+
 @endsection

@@ -27,7 +27,7 @@ class UserController extends Controller
     {
         # Listar datos de usuarios
         $users = DB::select('SELECT u.*, r.name as rol, s.descripcion as sucursal 
-        FROM users u
+        FROM users u 
             LEFT JOIN roles r ON u.role_id = r.id 
             LEFT JOIN sucursales s ON u.id_sucursal = s.id_sucursal 
         ORDER BY id DESC');
