@@ -6,7 +6,7 @@
             <div class="mb-2 row">
                 <div class="col-sm-12">
                     <h1>
-                        Edit Ventas
+                        Editar Ventas
                     </h1>
                 </div>
             </div>
