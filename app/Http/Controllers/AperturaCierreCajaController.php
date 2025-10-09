@@ -126,12 +126,12 @@ class AperturaCierreCajaController extends Controller
         );
 
         // retornar vista con los datos del cierre de caja en pdf
-        $pdf = Pdf::loadView('ventas.cierre_caja_pdf', compact('cierre_caja', 'totales_forma_pago'));
+       /*  $pdf = Pdf::loadView('ventas.cierre_caja_pdf', compact('cierre_caja', 'totales_forma_pago'));
         return $pdf->stream('cierre_caja_' . Carbon::now()->format('Y-m-d') . '.pdf');// concatenar fecha actual al nombre del archivo
-
-        // redireccionar a la vista ventas con mensaje de exito
-        // Alert::toast('Caja cerrada con éxito', 'success');
-        // return redirect()->route('ventas.index');
+ */
+        //redireccionar a la vista ventas con mensaje de exito
+        Alert::toast('Caja cerrada con éxito', 'success');
+        return redirect()->route('ventas.index');
     }
 
     public function editCierre($id_apertura)
