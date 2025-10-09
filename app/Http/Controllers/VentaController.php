@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Validator;
 use Laracasts\Flash\Flash;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
 use RealRashid\SweetAlert\Facades\Alert;
 use Luecano\NumeroALetras\NumeroALetras;
 
@@ -18,14 +19,63 @@ class VentaController extends Controller
 {
     public function index(Request $request)
     {
-        $ventas = DB::select(
-            "SELECT v.*, concat(c.clie_nombre,' ', c.clie_apellido) as cliente, c.clie_ci,
+        $buscar = $request->get('buscar');
+
+        if ($buscar) {
+            $ventas = DB::select(
+                "SELECT v.*, concat(c.clie_nombre,' ', c.clie_apellido) as cliente, c.clie_ci,
+                users.name as usuario
+                FROM ventas v
+                    JOIN clientes c ON v.id_cliente = c.id_cliente
+                    JOIN users ON v.user_id = users.id
+                WHERE (CAST(v.id_venta AS TEXT) iLIKE ? OR CAST(c.clie_nombre AS TEXT) 
+                iLIKE ? OR CAST(c.clie_apellido AS TEXT) iLIKE ? OR CAST(v.factura_nro AS TEXT) iLIKE ?
+                OR CAST(c.clie_ci AS TEXT) iLIKE ?)
+                order by v.fecha_venta desc",
+                [
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                ]
+            );
+        } else {
+            $ventas = DB::select(
+                "SELECT v.*, concat(c.clie_nombre,' ', c.clie_apellido) as cliente, c.clie_ci,
             users.name as usuario
             FROM ventas v
                 JOIN clientes c ON v.id_cliente = c.id_cliente
                 JOIN users ON v.user_id = users.id
             order by v.fecha_venta desc"
+            );
+        }
+
+        // Definimos los valores de paginación
+        $page = $request->input('page', 1);   // página actual (por defecto 1)
+        $perPage = 10;                        // cantidad de registros por página
+        $total = count($ventas);           // total de registros
+
+        // Cortamos el array para solo devolver los registros de la página actual
+        $items = array_slice($ventas, ($page - 1) * $perPage, $perPage);
+
+        // Creamos el paginador manualmente
+        $ventas = new LengthAwarePaginator(
+            $items,        // registros de esta página
+            $total,        // total de registros
+            $perPage,      // registros por página
+            $page,         // página actual
+            [
+                'path'  => $request->url(),     // mantiene la ruta base
+                'query' => $request->query(),   // mantiene parámetros como "buscar"
+            ]
         );
+
+        // si la accion es buscardor entonces significa que se debe recargar mediante ajax la tabla
+        if ($request->ajax()) {
+            //solo llmamamos a table.blade.php y mediante compact pasamos la variable users
+            return view('ventas.table')->with('ventas', $ventas);
+        }
 
         // Consulta para recuperar cajas
         $caja = DB::table('cajas')
@@ -69,7 +119,7 @@ class VentaController extends Controller
 
         // Enviar datos de sucursales segun sucursal del usuario
         $sucursales = DB::table('sucursales')->where('id_sucursal', auth()->user()->id_sucursal)
-                                             ->pluck('descripcion', 'id_sucursal');
+            ->pluck('descripcion', 'id_sucursal');
 
         // enviar datos de apertura de caja a ventas 
         $apertura_caja = DB::selectOne(
@@ -91,11 +141,10 @@ class VentaController extends Controller
 
         // validar que no exista una caja abierta para el usuario en la fecha pasada
         if (
-            !empty($apertura_caja) 
-            && Carbon::parse($apertura_caja->fecha_apertura)->format('Y-m-d') 
+            !empty($apertura_caja)
+            && Carbon::parse($apertura_caja->fecha_apertura)->format('Y-m-d')
             < Carbon::now()->format('Y-m-d')
-        ) 
-        {
+        ) {
             Alert::toast('Debe cerrar la caja abierta para poder realizar una venta', 'error');
             // retornar al index de ventas
             return redirect()->route('ventas.index');
@@ -155,16 +204,16 @@ class VentaController extends Controller
         }
 
         // validar que la nro de factura sea unica
-        if (!empty($input['factura_nro'])){
+        if (!empty($input['factura_nro'])) {
             // buscamos si ya existe la factura
             $factura_exist = DB::selectOne('SELECT * FROM ventas WHERE factura_nro = ?', [$input['factura_nro']]);
             // si existe mostramos error
-            if (!empty($factura_exist)){
+            if (!empty($factura_exist)) {
                 Alert::toast('El número de factura ya existe', 'error');
                 return redirect()->back()->withInput($input);
             }
         }
-        
+
         // validar fecha de venta no sea mayor a la fecha actual
         if (Carbon::parse($input['fecha_venta'])->format('Y-m-d') > Carbon::now()->format('Y-m-d')) {
             Alert::toast('La fecha de venta no puede ser mayor a la fecha actual', 'error');
@@ -227,7 +276,7 @@ class VentaController extends Controller
             }
 
             // actualizar la ultima factura impresa en cajas si es que se envio un nro de factura
-            if (!empty($input['factura_nro'])) {    
+            if (!empty($input['factura_nro'])) {
                 // extraer el nro de factura utilizando explode en la posicion 2
                 // 001-002-0000001
                 $factura_nro = explode('-', $input['factura_nro'])[2];
@@ -313,7 +362,7 @@ class VentaController extends Controller
 
         // Enviar datos de sucursales segun sucursal del usuario
         $sucursales = DB::table('sucursales')->where('id_sucursal', auth()->user()->id_sucursal)
-                                        ->pluck('descripcion', 'id_sucursal');
+            ->pluck('descripcion', 'id_sucursal');
 
         // obtener los detalles de ventas
         $detalle_venta = DB::select(
@@ -532,34 +581,38 @@ class VentaController extends Controller
 
     public function factura($id)
     {
-    $ventas = DB::selectOne("SELECT v.*, concat(c.clie_nombre,' ', c.clie_apellido) as cliente, c.clie_ci,
+        // recuperar datos de la venta
+        $ventas = DB::selectOne(
+            "SELECT v.*, concat(c.clie_nombre,' ', c.clie_apellido) as cliente, c.clie_ci,
             users.name as usuario, c.clie_direccion, c.clie_telefono
             FROM ventas v
                 JOIN clientes c ON v.id_cliente = c.id_cliente
                 JOIN users ON v.user_id = users.id
-            WHERE v.id_venta = ?");
+            WHERE v.id_venta = ?",
+            [$id]
+        );
 
-    if (empty($ventas)) {
-        Flash::error('Venta no encontrada');
-        return redirect()->route('ventas.index');
+        // validacion de existencia
+        if (empty($ventas)) {
+            Alert::toast('Venta no encontrada', 'error');
+            return redirect()->route('ventas.index');
+        }
+
+        // recuperar detalles de la venta
+        $detalle_venta = DB::select(
+            "SELECT dv.*, p.descripcion
+            FROM detalle_ventas dv
+                JOIN productos p ON dv.id_producto = p.id_producto
+            WHERE dv.id_venta = ?",
+            [$id]
+        );
+
+        // libreria para convertir numero a letras
+        $formateo = new NumeroALetras();
+        $numero_a_letras = $formateo->toWords($ventas->total);// recuperar total de la venta y convertir a letras
+
+        return view('ventas.factura')->with('ventas', $ventas)
+            ->with('detalle_venta', $detalle_venta)
+            ->with('numero_a_letras', $numero_a_letras);
     }
-
-    //recuperar detalle de ventas
-    $detalle_venta = DB::select(
-        'SELECT dv.id_venta, dv.id_producto, p.descripcion, dv.cantidad, dv.precio
-        FROM detalle_ventas dv
-        JOIN productos p ON dv.id_producto = p.id_producto
-        WHERE dv.id_venta = ?',
-        [$id]
-    );
-    //Libreria paera convertir numeros a letras
-    $formateo = new NumeroALetras();
-    $numero_a_letras = $formateo->toWords($ventas->total); //recuperar total de la venta y convertirlo a letras
-    
-    return view('ventas.factura')->with('ventas', $ventas)
-    ->with('detalle_venta', $detalle_venta)
-    ->with('numero_a_letras', $numero_a_letras);
-
-    }
-    
 }

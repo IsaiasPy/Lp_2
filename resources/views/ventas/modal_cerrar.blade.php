@@ -22,24 +22,31 @@
                     <div class="row">
                         <div class="form-group col-xs-12 col-md-12 col-lg-12">
                             <label>Caja </label>
-                           {!! Form::select('caj_cod', $cajas, null,
-                                ['class' => 'form-control',
+                            {!! Form::select('caj_cod', $cajas, null, [
+                                'class' => 'form-control',
                                 'disabled' => 'disabled',
                                 'id' => 'caj_cod',
-                                'placeholder' => 'Seleccione..'])
-                           !!}
+                                'placeholder' => 'Seleccione..',
+                            ]) !!}
                         </div>
                     </div>
 
                     <div class="row">
                         <div class="form-group col-xs-12 col-md-6 col-lg-6">
                             <label>Monto Apertura</label>
-                            {!! Form::text('monto_apertura', null,
-                            ['class' => 'form-control', 'readonly' => 'readonly', 'id' => 'monto_apertura']) !!}
+                            {!! Form::text('monto_apertura', null, [
+                                'class' => 'form-control',
+                                'readonly' => 'readonly',
+                                'id' => 'monto_apertura',
+                            ]) !!}
                         </div>
                         <div class="form-group col-xs-12 col-md-6 col-lg-6">
                             <label>Monto Cierre</label>
-                            {!! Form::text('monto_cierre', null, ['class' => 'form-control', 'readonly' => 'readonly', 'id' => 'monto_cierre']) !!}
+                            {!! Form::text('monto_cierre', null, [
+                                'class' => 'form-control',
+                                'readonly' => 'readonly',
+                                'id' => 'monto_cierre',
+                            ]) !!}
                         </div>
                     </div>
 

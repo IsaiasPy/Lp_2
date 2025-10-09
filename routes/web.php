@@ -121,3 +121,11 @@ Route::resource('stocks', App\Http\Controllers\StockController::class);
 
 ## Ruta para imprimir factura
 Route::get('imprimir-factura/{id}', [App\Http\Controllers\VentaController::class, 'factura']);
+
+## Ruta para cerrar caja y recuperar los valores
+Route::get('apertura_cierre/editCierre/{id}',
+[App\Http\Controllers\AperturaCierreCajaController::class, 'editCierre']);
+
+## Ruta para guardar caja cerrada
+Route::get('apertura_cierre/cerrar_caja/{id}',
+[App\Http\Controllers\AperturaCierreCajaController::class, 'cerrar_caja']);

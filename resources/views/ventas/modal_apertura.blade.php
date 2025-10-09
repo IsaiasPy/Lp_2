@@ -4,7 +4,7 @@
         <div class="modal-content">
             <!-- Modal Header -->
             <div class="modal-header">
-                <h4 class="modal-title">Apertura Caja </h4>
+                <h4 class="modal-title">Apertura Caja</h4>
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
             </div>
             <!-- Modal body -->
@@ -23,7 +23,7 @@
 
                     <div class="row">
                         <div class="form-group col-xs-12 col-md-12 col-lg-12">
-                            <label>Caja </label>
+                            <label>Caja</label>
                             {!! Form::select('id_caja', $cajas, null, [
                                 'class' => 'form-control',
                                 'required' => 'required',

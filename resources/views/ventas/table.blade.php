@@ -37,23 +37,23 @@
                                 <a href="{{ route('ventas.show', [$venta->id_venta]) }}" class='btn btn-default btn-xs'>
                                     <i class="far fa-eye"></i>
                                 </a>
-                            <!-- utilizamos url en vez de route por que no tenemos un nombre de ruta -->
-                                <a href="{{ url('imprimir-factura/', [$venta->id_venta]) }}"
-                                    class='btn btn-default btn-xs'>
-                                    <i class="far fa-file-print"></i>
-
-                                    <!-- validacion para mostrar los botones de borrar y editar si la venta es anulada -->
-                                    @if ($venta->estado != 'ANULADO')
-                                        <a href="{{ route('ventas.edit', [$venta->id_venta]) }}"
-                                            class='btn btn-default btn-xs'>
-                                            <i class="far fa-edit"></i>
-                                        </a>
-                                        {!! Form::button('<i class="far fa-trash-alt"></i>', [
-                                            'type' => 'submit',
-                                            'class' => 'btn btn-danger btn-xs',
-                                            'onclick' => "return confirm('Desea anular la venta?')",
-                                        ]) !!}
-                                    @endif
+                                <!-- utilizamos url en vez de route porque no tenemos un nombre de ruta -->
+                                <a href="{{ url('imprimir-factura/' . $venta->id_venta) }}"
+                                    class='btn btn-success btn-xs'>
+                                    <i class="fas fa-print"></i>
+                                </a>
+                                <!-- validacion para mostrar los botones de borrar y editar si la venta es anulada -->
+                                @if ($venta->estado != 'ANULADO')
+                                    <a href="{{ route('ventas.edit', [$venta->id_venta]) }}"
+                                        class='btn btn-default btn-xs'>
+                                        <i class="far fa-edit"></i>
+                                    </a>
+                                    {!! Form::button('<i class="far fa-trash-alt"></i>', [
+                                        'type' => 'submit',
+                                        'class' => 'btn btn-danger btn-xs',
+                                        'onclick' => "return confirm('Desea anular la venta?')",
+                                    ]) !!}
+                                @endif
                             </div>
                             {!! Form::close() !!}
                         </td>

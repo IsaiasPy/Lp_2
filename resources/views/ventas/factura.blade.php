@@ -312,105 +312,108 @@
         <p> Atyra 1750 c/Capitan Rivas </p>
         <p> 021 200 100 </p>
     </address>
-    <span><img alt="it" src="https://www.utic.edu.py/v7/images/logosutic/Foto%20de%20perfil.png" height="80px"
-            width="80px"></span>
+    <span>
+        <img alt="it" src="https://www.utic.edu.py/v7/images/logosutic/Foto%20de%20perfil.png" height="80px"
+            width="80px">
+    </span>
 </header>
+
 <body style=" overflow-y: scroll;">
-<article>
-    <h1>Clientes</h1>
-    <address class="norm">
-        <h4>
-            {{$ventas->clie_nombre . ' ' . $ventas->clie_apellido}}
-        </h4>
-        <p> {{$ventas->clie_direccion}} <br>
-        <p> {{$ventas->clie_telefono}} <br>
-    </address>
+    <article>
+        <h1>Clientes</h1>
+        <address class="norm">
+            <h4>
+                {{ $ventas->cliente }}
+            </h4>
+            <p> {{ $ventas->clie_direccion }} <br>
+            <p> {{ $ventas->clie_telefono }} <br>
+        </address>
 
-    <table class="meta">
-        <tr>
-            <th><span>Factura #</span></th>
-            <td><span>{{$ventas->factura_nro}}</span></td>
-        </tr>
-        <tr>
-            <th><span>Condición Venta</span></th>
-            <td><span>{{$ventas->condicion_venta}}</span></td>
-        </tr>
-        <tr>
-            <th><span>Fecha</span></th>
-            <td>
-                <span>
-                    {{\Carbon\Carbon::parse($ventas->fecha_venta)->format('d/m/Y')}}
-                </span>
-            </td>
-        </tr>
-        <tr>
-            <th><span>Monto Total</span></th>
-            <td>
-                <span id="prefix">Gs.</span><span>
-                {{number_format($ventas->total, 0, ',', '.')}}
-                </span>
-            </td>
-        </tr>
-    </table>
-    <table class="inventory">
-        <thead>
+        <table class="meta">
             <tr>
-                <th><span>Código</span></th>
-                <th><span>Decripcion</span></th>
-                <th><span>Cantidad</span></th>
-                <th><span>Precio Unitario</span></th>
-                <th><span>Subtotal</span></th>
+                <th><span>Factura #</span></th>
+                <td><span>{{ $ventas->factura_nro }}</span></td>
             </tr>
-        </thead>
-        <tbody>
-            @if(count($detalle_venta))<!-- Contar los elementos de un array -->
-                @foreach ($detalle_venta as $value)
-                    <tr>
-                        <td><span>{{$value->id_producto}}</span></td>
-                        <td><span>{{$value->descripcion}}</span></td>
-                        <td>
-                            <span data-prefix>Gs.</span><span>
-                            {{number_format($value->precio, 0, ',', '.')}}
-                            </span>
-                        </td>
-                        <td><span>{{$value->cantidad}}</span></td>
-                        <td>
-                            <span data-prefix>Gs.</span>
-                            <span>{{number_format($value->precio * $value->cantidad, 0, ',', '.')}}</span>
-                        </td>
-                    </tr>
-                @endforeach
-            @endif
-        </tbody>
-    </table>
+            <tr>
+                <th><span>Condición Venta</span></th>
+                <td><span>{{ $ventas->condicion_venta }}</span></td>
+            </tr>
+            <tr>
+                <th><span>Fecha</span></th>
+                <td>
+                    <span>
+                        {{ \Carbon\Carbon::parse($ventas->fecha_venta)->format('d/m/Y') }}
+                    </span>
+                </td>
+            </tr>
+            <tr>
+                <th><span>Monto Total</span></th>
+                <td>
+                    <span id="prefix">Gs.</span><span>
+                        {{ number_format($ventas->total, 0, ',', '.') }}
+                    </span>
+                </td>
+            </tr>
+        </table>
+        <table class="inventory">
+            <thead>
+                <tr>
+                    <th><span>Código</span></th>
+                    <th><span>Decripcion</span></th>
+                    <th><span>Cantidad</span></th>
+                    <th><span>Precio Unitario</span></th>
+                    <th><span>Subtotal</span></th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (count($detalle_venta))<!-- contar los elementos de un array -->
+                    @foreach ($detalle_venta as $value)
+                        <tr>
+                            <td><span>{{ $value->id_producto }}</span></td>
+                            <td><span>{{ $value->descripcion }}</span></td>
+                            <td>
+                                <span data-prefix>Gs.</span><span>
+                                    {{ number_format($value->precio, 0, ',', '.') }}
+                                </span>
+                            </td>
+                            <td><span>{{ $value->cantidad }}</span></td>
+                            <td>
+                                <span data-prefix>Gs.</span>
+                                <span>{{ number_format($value->precio * $value->cantidad, 0, ',', '.') }}</span>
+                            </td>
+                        </tr>
+                    @endforeach
+                @endif
+            </tbody>
+        </table>
 
-    <table>
-        <!-- numero a letras -->
-        <tr>
-            <th>Total en letras</th>
-            <td colspan="3">
-                <span>
-                    {{ $numero_a_letras }}
-                </span>
-            </td>
-        </tr>
-        
-        <!-- total -->
-        <tr aria-rowspan="4">
-            <th><span>Total</span></th>
-            <td colspan="3" style="text-align: right">
-                <span data-prefix>Gs.</span>
-                <span>
-                    {{number_format($ventas->total, 0, ',', '.')}}
-                </span>
-            </td>
-        </tr>
-    </table>
-    <br>
-    <br>
-    <buttom onclick = "window.print();"class="btn btn-primary">Imprimir</buttom>
-    <br>
-    <buttom onclick = "window.close.href='{{route('ventas.index')}}';" class="btn btn-primary">Cerrar</buttom>
-</article>
+        <table>
+            <!-- numero a letras -->
+            <tr>
+                <th>Total en letras</th>
+                <td colspan="3">
+                    <span>
+                        {{ $numero_a_letras }}
+                    </span>
+                </td>
+            </tr>
+
+            <!-- total -->
+            <tr aria-rowspan="4">
+                <th><span>Total</span></th>
+                <td colspan="3" style="text-align: right">
+                    <span data-prefix>Gs.</span>
+                    <span>
+                        {{ number_format($ventas->total, 0, ',', '.') }}
+                    </span>
+                </td>
+            </tr>
+        </table>
+        <br>
+        <br>
+        <button onclick="window.print();" class="btn btn-primary">Imprimir</button>
+        <button onclick="window.location.href='{{ route('ventas.index') }}';" class="btn btn-secondary">Cerrar</button>
+    </article>
 </body>
+
 </html>
