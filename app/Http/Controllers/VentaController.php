@@ -609,7 +609,7 @@ class VentaController extends Controller
 
         // libreria para convertir numero a letras
         $formateo = new NumeroALetras();
-        $numero_a_letras = $formateo->toWords($ventas->total);// recuperar total de la venta y convertir a letras
+        $numero_a_letras = $formateo->toWords($ventas->total);// recuperar de la venta y convertir a letras
 
         return view('ventas.factura')->with('ventas', $ventas)
             ->with('detalle_venta', $detalle_venta)
