@@ -26,20 +26,20 @@
                 {!! Form::hidden('id_venta', $ventas->id_venta, ['class' => 'form-control']) !!}
                 <!-- Ven Fecha Field -->
                 <div class="form-group col-sm-6">
-                    {!! Form::label('ven_fecha', 'Fecha Venta:') !!}
+                    {!! Form::label('fecha_venta', 'Fecha Venta:') !!}
                     {!! Form::date(
-                    'ven_fecha',
+                    'fecha_venta',
                     isset($ventas)
-                    ? \Carbon\Carbon::parse($ventas->ven_fecha)->format('Y-m-d')
+                    ? \Carbon\Carbon::parse($ventas->fecha_venta)->format('Y-m-d')
                     : \Carbon\Carbon::now()->format('Y-m-d'),
-                    ['class' => 'form-control', 'id' => 'ven_fecha', 'readonly' => 'readonly'],
+                    ['class' => 'form-control', 'id' => 'fecha_venta', 'readonly' => 'readonly'],
                     ) !!}
                 </div>
 
                 <!-- Nro Factura Field -->
                 <div class="form-group col-sm-6">
-                    {!! Form::label('nro_factura', 'Nro Factura:') !!}
-                    {!! Form::text('nro_factura', $ventas->nro_factura,
+                    {!! Form::label('factura_nro', 'Nro Factura:') !!}
+                    {!! Form::text('factura_nro', $ventas->factura_nro,
                     ['class' => 'form-control',
                     'readonly' => 'readonly']) !!}
                 </div>
@@ -47,7 +47,7 @@
                 <!-- Id Cliente Field -->
                 <div class="form-group col-sm-6">
                     {!! Form::label('id_cliente', 'Cliente:') !!}
-                    {!! Form::text('id_cliente', $ventas->cli_nombre . ' ' . $ventas->cli_apellido, [
+                    {!! Form::text('id_cliente', $ventas->cliente, [
                     'class' => 'form-control',
                     'readonly' => 'readonly',
                     ]) !!}
@@ -55,7 +55,7 @@
 
                 <div class="form-group col-sm-6">
                     {!! Form::label('vtot_fac', 'Importe a Pagar:') !!}
-                    {!! Form::text('vtot_fac', number_format($ventas->ven_total, 0, ',', '.'), [
+                    {!! Form::text('vtot_fac', number_format($ventas->total, 0, ',', '.'), [
                     'class' => 'form-control',
                     'readonly' => 'readonly',
                     'id' => 'vtot_fac'
@@ -92,7 +92,7 @@
             <div class="row">
                 <div class="form-group col-sm-6">
                     {!! Form::label('pendiento_cobro', 'Pendiente:') !!}
-                    {!! Form::text('pendiento_cobro', number_format($ventas->ven_total, 0, ',', '.') , [
+                    {!! Form::text('pendiento_cobro', number_format($ventas->total, 0, ',', '.') , [
                     'class' => 'form-control text-right',
                     'readonly' => 'readonly',
                     'id' => 'vtot_pend',
@@ -100,8 +100,8 @@
                 </div>
 
                 <div class="form-group col-sm-6">
-                    {!! Form::label('total_cobro', 'Total Pago:') !!}
-                    {!! Form::text('total_cobro', 0, [
+                    {!! Form::label('total', 'Total Pago:') !!}
+                    {!! Form::text('total', 0, [
                     'class' => 'form-control text-right vtot_fpa',
                     'readonly' => 'readonly',
                     ]) !!}
@@ -122,7 +122,7 @@
     <template tpl-cobros>
         <tr>
             <td>
-                {!! Form::select('forma_pago[]', $forma_pago, null, [
+                {!! Form::select('metodos_pago[]', $metodos_pago, null, [
                 'class' => 'form-control',
                 'style' => 'width: 100%',
                 'id' => 'forma_pago',
@@ -188,7 +188,10 @@
 
         /** FUNCION PARA ELIMINAR FILA DE UNA TABLA **/
         function eliminarFila(t) {
+            // remover el tr completo de forma de pago
             $(t).parents('tr').remove();
+            //actualizar totales llamando a la funcion actTotalFpa
+            actTotalFpa();
         }
 
         /** Funcion para calcular subtotal de forma de pagos **/
@@ -251,7 +254,7 @@
             if (totfpa > totalFac) {
                  Swal.fire({
                         title: 'Error!',
-                        text: 'Los totales no coinciden..!',
+                        text: 'Los totales no coinciden!',
                         icon: 'info',
                         confirmButtonText: 'Ok'
                 });

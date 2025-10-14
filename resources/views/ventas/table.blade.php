@@ -34,6 +34,10 @@
                         <td style="width: 120px">
                             {!! Form::open(['route' => ['ventas.destroy', $venta->id_venta], 'method' => 'delete']) !!}
                             <div class='btn-group'>
+                            <!-- Boton cobros -->
+                                <a href="{{ route('cobros.index', ['id_venta' => $venta->id_venta]) }}" class='btn btn-warning btn-xs'>
+                                    <i class="far fa-money-bill-alt"></i>
+                                </a>
                                 <a href="{{ route('ventas.show', [$venta->id_venta]) }}" class='btn btn-default btn-xs'>
                                     <i class="far fa-eye"></i>
                                 </a>

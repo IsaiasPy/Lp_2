@@ -129,3 +129,6 @@ Route::get('apertura_cierre/editCierre/{id}',
 ## Ruta para guardar caja cerrada
 Route::get('apertura_cierre/cerrar_caja/{id}',
 [App\Http\Controllers\AperturaCierreCajaController::class, 'cerrar_caja']);
+
+## Ruta para cobros
+Route::resource('cobros', App\Http\Controllers\CobroController::class);
