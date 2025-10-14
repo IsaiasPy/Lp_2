@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class CobroController extends Controller
@@ -44,7 +45,10 @@ class CobroController extends Controller
            Alert::toast('La venta no existe', 'error');
            return redirect()->route('ventas.index');
        }
-
+       DB::beginTransaction();
+       //Registrar el cobro
+       try {
+           $total_cobros = 0;
        // validar que exista la formas de pago recibidas del formulario
        if($request->has('forma_pago')){
            foreach($input['forma_pago'] as $key => $metodo){
@@ -63,8 +67,19 @@ class CobroController extends Controller
             //Registrar el cobro
             
         }
-           Alert::toast('Cobro realizado correctamente', 'success');
-           return redirect()->route('ventas.index');
        }
+       DB::update ("UPDATE ventas SET estado = 'COBRADO' WHERE id_venta = ?", [$input['id_venta']]);
+       DB::commit();
+
+       } catch (\Exception $e) {
+           DB::rollBack();
+           Log::info('Error en transaccion de cobros: ' . $e->getMessage());
+           Alert::toast('Error en el proceso: ', $e->getMessage(), 'error');
+
+           return redirect()->route('cobros.index', ['id_venta' => $input['id_venta']]);
+       }
+
+        Alert::toast('Cobro realizado correctamente', 'success');
+        return redirect()->route('ventas.index');
     }
 }
