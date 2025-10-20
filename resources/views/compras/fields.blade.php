@@ -92,7 +92,7 @@
             document.getElementById('buscar').addEventListener('click', function() {
                 $('#productSearchModal').modal('show'); // Mostrar el modal
                 let query = document.getElementById('productSearchQuery').value;
-                fetch('{{ url('buscar-productoscompras') }}?query=' + query + '&cod_suc=' + $("#id_sucursal").val())// capturar valor de sucursal utilzando val()
+                fetch('{{ url('buscar-productos') }}?query=' + query + '&cod_suc=' + $("#id_sucursal").val())// capturar valor de sucursal utilzando val()
                     .then(response => response.text())
                     .then(html => {
                         document.getElementById('modalResults').innerHTML = html; // innerHTML es para cargar en el modal

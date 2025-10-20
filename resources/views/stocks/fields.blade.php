@@ -1,12 +1,12 @@
 <!-- Id Producto Field -->
 <div class="form-group col-sm-6">
-    {!! Form::label('id_producto', 'Id Producto:') !!}
+    {!! Form::label('id_producto', 'Producto:') !!}
     {!! Form::text('id_producto', null, ['class' => 'form-control']) !!}
 </div>
 
 <!-- Id Sucursal Field -->
 <div class="form-group col-sm-6">
-    {!! Form::label('id_sucursal', 'Id Sucursal:') !!}
+    {!! Form::label('id_sucursal', 'Sucursal:') !!}
     {!! Form::number('id_sucursal', null, ['class' => 'form-control']) !!}
 </div>
 

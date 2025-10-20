@@ -218,4 +218,51 @@ class UserController extends Controller
 
         return redirect(route('users.index'));
     }
+
+    public function perfil()
+    {
+        return view('users.profile');
+    }
+
+    public function cambiarPassword(Request $request)
+    {
+        $input = $request->all();
+
+        ##validar datos de contraseña utilizando validate de laravel
+        $validator = Validator::make(
+            $request->all(),
+            [
+                'password' => 'required|min:6',
+                'confirm-password' => 'required|same:password',
+            ],
+            [
+                'password.required'         => 'La contraseña es requerida',
+                'password.min'              => 'Debe tener al menos 6 digítos la contraseña',
+                'confirm-password.required' => 'La confirmación de contraseña es requerida',
+                'confirm-password.same'     => 'Las contraseñas no coinciden',
+            ]
+        );
+
+        # verificar si la validación falla
+        if ($validator->fails()) {
+
+            return redirect()->back()
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        #Actualizar la contraseña del usuario en session
+        DB::update('UPDATE users SET password = ? WHERE id = ?', 
+        [
+            Hash::make($input['password']), // utilizar Hash para encriptar la contraseña
+            auth()->user()->id
+        ]);
+
+        // mostrar mensaje de exito
+        Alert::toast('Éxito', 'Contraseña actualizada correctamente.!', 'success');
+
+        // quedarse en el mismo formulario profile
+        return redirect()->back();
+    }
+
 }
