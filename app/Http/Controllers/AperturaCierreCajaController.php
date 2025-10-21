@@ -163,7 +163,7 @@ class AperturaCierreCajaController extends Controller
             "SELECT coalesce(sum(c.cobro_importe), 0)as total_cobro
             FROM cobros c
                 JOIN ventas ve on ve.id_venta = c.id_venta 
-            WHERE ve.id_apertura = ? and ve.estado = 'COMPLETADO' ",
+            WHERE ve.id_apertura = ? and ve.estado = 'PAGADO' ",
             [
                 $apertura->id_apertura,
             ]

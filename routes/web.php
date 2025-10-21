@@ -132,3 +132,6 @@ Route::get('apertura_cierre/cerrar_caja/{id}',
 
 ## Ruta para cobros
 Route::resource('cobros', App\Http\Controllers\CobroController::class);
+
+## Ruta para exportar cargos a excel Ejemplo
+Route::post('exportar-cargos', [App\Http\Controllers\ReporteController::class, 'exportar']);

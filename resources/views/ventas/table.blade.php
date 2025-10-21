@@ -27,7 +27,7 @@
                         <td>{{ number_format($venta->total, 0, ',', '.') }}</td>
                         <td>{{ $venta->usuario }}</td>
                         <td>
-                            <span class="badge bg-{{ $venta->estado == 'COMPLETADO' ? 'info' : ($venta->estado == 'COBRADO' ? 'success' : 'danger') }}">
+                            <span class="badge bg-{{ $venta->estado == 'COMPLETADO' ? 'info' : ($venta->estado == 'PAGADO' ? 'success' : 'danger') }}">
                                 {{ $venta->estado }}
                             </span>
                         </td>
@@ -35,7 +35,7 @@
                             {!! Form::open(['route' => ['ventas.destroy', $venta->id_venta], 'method' => 'delete']) !!}
                             <div class='btn-group'>
                                 <!-- boton cobros -->
-                                @if($venta->estado <> 'ANULADO' && $venta->estado <> 'COBRADO')<!-- validacion para mostrar el boton de cobros si la venta no es anulada ni pagada -->
+                                @if($venta->estado <> 'ANULADO' && $venta->estado <> 'PAGADO')<!-- validacion para mostrar el boton de cobros si la venta no es anulada ni pagada -->
                                     <a href="{{ route('cobros.index', ["id_venta" => $venta->id_venta]) }}" class='btn btn-warning btn-xs'>
                                         <i class="far fa-money-bill-alt"></i>
                                     </a>
@@ -53,7 +53,7 @@
                                 @endif
                                 <!-- validacion para mostrar los botones de borrar y editar si la venta es anulada -->
                                 @if ($venta->estado != 'ANULADO')
-                                    @if($venta->estado != 'COBRADO')<!-- validacion para mostrar el boton de editar si la venta no es pagada -->
+                                    @if($venta->estado != 'PAGADO')<!-- validacion para mostrar el boton de editar si la venta no es pagada -->
                                         <a href="{{ route('ventas.edit', [$venta->id_venta]) }}"
                                             class='btn btn-default btn-xs'>
                                             <i class="far fa-edit"></i>

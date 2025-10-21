@@ -227,6 +227,8 @@ class VentaController extends Controller
         // Agregar transacciones
         DB::beginTransaction();
         try {
+            // quitar los puntos de miles de los totales
+            $total= str_replace('.', '', $input['total']);
             $ventas = DB::table('ventas')->insertGetId([
                 'id_cliente' => $input['id_cliente'],
                 'condicion_venta' => $input['condicion_venta'],
@@ -235,7 +237,7 @@ class VentaController extends Controller
                 'fecha_venta' => $input['fecha_venta'],
                 'factura_nro' => $input['factura_nro'] ?? '0',
                 'user_id' => $user_id,
-                'total' => $input['total'] ?? 0,
+                'total' => $total ?? 0,
                 'id_sucursal' => $input['id_sucursal'],
                 'estado' => 'COMPLETADO',
                 'id_apertura' => $input['id_apertura'],
