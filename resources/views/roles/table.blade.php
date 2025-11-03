@@ -14,11 +14,15 @@
                         <td>{{ $rol->name }}</td>
                         <td>{{ $rol->guard_name }}</td>
                         <td style="width: 120px">
+                        @can('roles destroy')
                             {!! Form::open(['route' => ['roles.destroy', $rol->id], 'method' => 'delete']) !!}
                             <div class='btn-group'>
+                        @endcan
+                        @can('roles edit')
                                 <a href="{{ route('roles.edit', [$rol->id]) }}" class='btn btn-default btn-xs'>
                                     <i class="far fa-edit"></i>
                                 </a>
+                        @endcan
                                 {!! Form::button('<i class="far fa-trash-alt"></i>', [
                                     'type' => 'submit',
                                     'class' => 'btn btn-danger btn-xs alert-delete',

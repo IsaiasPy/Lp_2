@@ -39,20 +39,31 @@
                     </div>
 
 
-                    <div class="form-group col-sm-3">
-                        <button class="btn btn-success" type="button" data-toggle="tooltip" data-placement="top"
-                            title="Buscar" id="btn-consultar" style="margin-top:32px">
+                    <div class="form-group col-sm-6">
+                        <button class="btn btn-success" type="button" 
+                            data-toggle="tooltip" data-placement="top"
+                            title="Buscar" id="btn-consultar" style="margin-top:30px">
                             <i class="fas fa fa-search"></i>
                         </button>
 
-                        <button class="btn btn-default" type="button" data-toggle="tooltip" title="Limpiar" id="btn-limpiar"
-                            style="margin-top:32px">
-                            <i class="fas fa fa-eraser"></i>
+                        <button class="btn btn-default" type="button" 
+                            style="margin-top:30px"
+                            id="btn-limpiar"
+                            data-toggle="tooltip" data-placement="top"
+                            title="Limpiar">
+                            <i class="fas fa-eraser"></i>
                         </button>
 
-                        <button class="btn btn-primary" id="btn-exportar" type="button" data-toggle="tooltip"
-                            title="Exportar" style="margin-top:32px">
+                        <button class="btn btn-primary" id="btn-exportar" type="button" 
+                            data-toggle="tooltip"
+                            title="Exportar a PDF" style="margin-top:30px">
                             <i class="fas fa-print"></i> PDF
+                        </button>
+
+                        <button class="btn btn-primary" id="btn-exportar-excel" type="button" 
+                            data-toggle="tooltip"
+                            title="Exportar a Excel" style="margin-top:30px">
+                            <i class="fas fa-file-excel"></i> Excel
                         </button>
                     </div>
                 </div>
@@ -86,12 +97,12 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         $(document).ready(function() {
-
+            // llamar a la función tooltip
             $('[data-toggle="tooltip"]').tooltip();
+
             // boton para generar consulta al controlador reportes funcion rpt_cargos
             $('#btn-consultar').click(function(e) {
                 // Aquí puedes agregar la lógica para generar el reporte
@@ -100,19 +111,29 @@
                     '&hasta=' + $('#hasta').val();
             });
 
+            // boton para limpiar los filtros
+            $('#btn-limpiar').click(function(e) {
+                e.preventDefault();
+                // limpiar filtros de los input
+                $('#desde').val('');
+                $('#hasta').val('');
+                window.location.href = '{{ url('reporte-cargos') }}';
+            });
+
             // boton para generar la exportación a pdf del reporte
             $('#btn-exportar').click(function(e) {
                 // Aquí puedes agregar la lógica para exportar el reporte
                 e.preventDefault();
-                window.open('{{ url('reporte-cargos') }}?desde=' + $('#desde').val() + '&exportar=pdf',
-                    '_blank');
+                window.open('{{ url('reporte-cargos') }}?desde=' + $('#desde').val() +
+                    '&hasta=' + $('#hasta').val() + '&exportar=pdf', '_blank');
+            });
+
+            // boton para generar la exportación a excel del reporte
+            $('#btn-exportar-excel').click(function(e) {
+                e.preventDefault();
+                window.open('{{ url('reporte-cargos') }}?desde=' + $('#desde').val() +
+                    '&hasta=' + $('#hasta').val() + '&exportar=excel', '_blank');
             });
         });
-        $('#btn-limpiar').click(function(e) {
-            e.preventDefault();
-            $('#desde').val('');
-            $('#hasta').val('');
-            window.location.href = '{{ url('reporte-cargos') }}';
-        })
     </script>
 @endpush

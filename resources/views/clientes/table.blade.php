@@ -21,7 +21,7 @@
                         <td>{{ $cliente->clie_ci }}</td>
                         <td>{{ $cliente->clie_telefono }}</td>
                         <td>{{ $cliente->ciudad }}</td>
-                        <td>{{ \Carbon\Carbon::parse($cliente->cli_fecha_nac)->format('d/m/Y') ?? null }}</td>
+                        <td>{{ \Carbon\Carbon::parse($cliente->clie_fecha_nac)->format('d/m/Y') ?? null }}</td>
                         <td>{{ $cliente->departamento }}</td>
                         <td style="width: 120px">
                             {!! Form::open(['route' => ['clientes.destroy', $cliente->id_cliente], 'method' => 'delete']) !!}

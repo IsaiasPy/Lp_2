@@ -4,11 +4,11 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Imagen</th>
-                        <th>Descripción</th>
-                        <th>Precio</th>
-                        <th>Tipo Iva</th>
-                        <th>Marca</th>
+                        <th style="text-align: center;">Imagen</th>
+                        <th style="text-align: center;">Descripción</th>
+                        <th style="text-align: center;">Precio</th>
+                        <th style="text-align: center;">Tipo Iva</th>
+                        <th style="text-align: center;">Marca</th>
                         <th colspan="3">Action</th>
                     </tr>
                 </thead>
@@ -16,7 +16,7 @@
                     @foreach ($productos as $producto)
                         <tr>
                             <td>{{ $producto->id_producto }}</td>
-                            <td>
+                            <td style="display-align: center;">
                                 @if ($producto->imagen_producto)
                                     <img src="{{ asset('img/productos/' . $producto->imagen_producto) }}"
                                         alt="Imagen del Producto" style="width: 80px; height: 50px; display: block; margin: auto;">
@@ -24,10 +24,10 @@
                                     No hay imagen
                                 @endif
                             </td>
-                            <td>{{ $producto->descripcion }}</td>
-                            <td>{{ number_format($producto->precio, 0, ',', '.') }}</td>
-                            <td>{{ $producto->tipo_iva }}</td>
-                            <td>{{ $producto->marcas }}</td>
+                            <td style="text-align: center;">{{ $producto->descripcion }}</td>
+                            <td style="text-align: center;">{{ number_format($producto->precio, 0, ',', '.') }}</td>
+                            <td style="text-align: center;">{{ $producto->tipo_iva }}</td>
+                            <td style="text-align: center;">{{ $producto->marcas }}</td>
                             <td style="width: 120px">
                                 {!! Form::open(['route' => ['productos.destroy', $producto->id_producto], 'method' => 'delete']) !!}
                                 <div class='btn-group'>

@@ -135,3 +135,8 @@ Route::resource('cobros', App\Http\Controllers\CobroController::class);
 
 ## Ruta para exportar cargos a excel Ejemplo
 Route::post('exportar-cargos', [App\Http\Controllers\ReporteController::class, 'exportar']);
+
+## Ruta para Cuentas a cobrar
+Route::resource('cuentasacobrar', App\Http\Controllers\CuentasACobrarController::class);
+
+##

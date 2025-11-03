@@ -44,6 +44,8 @@
 <!-- Reportes -->
 <li
     class="nav-item {{ Request::is('reporte-cargos*') ||
+    Request::is('cuentasacobrar*') ||
+    Request::is('stocks*') ||
     Request::is('reporte-clientes*') ||
     Request::is('reporte-proveedores*') ||
     Request::is('reporte-productos*') ||
@@ -60,12 +62,27 @@
     </a>
     <ul class="nav nav-treeview"
         style="display: {{ Request::is('reporte-cargos*') ||
+        Request::is('cuentasacobrar*') ||
+        Request::is('stocks*') ||
         Request::is('reporte-clientes*') ||
         Request::is('reporte-proveedores*') ||
         Request::is('reporte-productos*') ||
         Request::is('reporte-sucursales*')
             ? 'block;'
             : 'none;' }};">
+             <li class="nav-item">
+    <a href="{{ route('cuentasacobrar.index') }}" class="nav-link {{ Request::is('cuentasacobrar*') ? 'active' : '' }}">
+        <i class="nav-icon fas fa-hand-holding-usd"></i>
+        <p>Cuentas A Cobrar</p>
+    </a>
+</li>
+        <li class="nav-item">
+            <a href="{{ route('stocks.index') }}" class="nav-link {{ Request::is('stocks*') ? 'active' : '' }}">
+                <i class="fas fa-cubes"></i>
+                <p>Stocks</p>
+            </a>
+        </li>
+        
         <li class="nav-item">
             <a href="{{ url('reporte-cargos') }}"
                 class="nav-link {{ Request::is('reporte-cargos*') ? 'active' : '' }}">
@@ -111,7 +128,6 @@
 <!-- Configuraciones (CORREGIDO Y ORDENADO POR RELEVANCIA) -->
 <li
     class="nav-item {{ Request::is('users*') ||
-    Request::is('stocks*') ||
     Request::is('cargos*') ||
     Request::is('departamentos*') ||
     Request::is('proveedores*') ||
@@ -133,7 +149,6 @@
     </a>
     <ul class="nav nav-treeview"
         style="display: {{ Request::is('users*') ||
-        Request::is('stocks*') ||
         Request::is('cargos*') ||
         Request::is('departamentos*') ||
         Request::is('proveedores*') ||
@@ -145,12 +160,6 @@
         Request::is('roles*')
             ? 'block;'
             : 'none;' }};">
-        <li class="nav-item">
-            <a href="{{ route('stocks.index') }}" class="nav-link {{ Request::is('stocks*') ? 'active' : '' }}">
-                <i class="fas fa-cubes"></i>
-                <p>Stocks</p>
-            </a>
-        </li>
 
         <li class="nav-item">
             <a href="{{ route('departamentos.index') }}"

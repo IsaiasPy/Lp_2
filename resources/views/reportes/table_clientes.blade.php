@@ -16,7 +16,7 @@
                                 <tr>
                                     <td>{{ $cliente->id_cliente }}</td>
                                     <td>{{ $cliente->clie_nombre . ' ' . $cliente->clie_apellido }}</td>
-                                    <td>{{ \Carbon\Carbon::parse($cliente->cli_fecha_nac)->format('d/m/Y')}}</td>
+                                    <td>{{ \Carbon\Carbon::parse($cliente->clie_fecha_nac)->format('d/m/Y')}}</td>
                                     <td>{{ $cliente->edad }}</td>
                                     <td>{{ $cliente->clie_telefono }}</td>
                                     <td>{{ $cliente->clie_ci }}</td>

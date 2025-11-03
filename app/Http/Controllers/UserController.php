@@ -13,7 +13,7 @@ use RealRashid\SweetAlert\Facades\Alert;
 
 class UserController extends Controller
 {
-    public function __construct()
+ /*    public function __construct()
     {
         // validar que el usuario este autenticado
         $this->middleware('auth');
@@ -22,7 +22,7 @@ class UserController extends Controller
         $this->middleware('permission:users create')->only(['create', 'store']);
         $this->middleware('permission:users edit')->only(['edit', 'update']);
         $this->middleware('permission:users destroy')->only(['destroy']);
-    }
+    } */
     public function index()
     {
         # Listar datos de usuarios
