@@ -170,4 +170,94 @@ class ReporteController extends Controller
 
         return view('reportes.rpt_ventas')->with('ventas', $ventas)->with('clientes', $clientes);
     }
+     public function rpt_proveedores(Request $request)
+    {
+        // recibir datos del formulario a partir de la url get
+        $input = $request->all();
+
+        // verificar si los filtros no estan vacios para realizar el where en la consulta proveedores
+        if (!empty($input['desde']) and !empty($input['hasta'])) {
+            $proveedores = DB::select('SELECT * FROM proveedores WHERE id_proveedor 
+        BETWEEN ' . $input['desde'] . ' AND ' . $input['hasta']);
+        } else {
+            // si no se reciben datos, se traen todos los registros (SELECT * FROM proveedores)
+            $proveedores = DB::select('SELECT * FROM proveedores');
+        }
+
+        if (isset($input['exportar']) && $input['exportar'] == 'pdf') {
+            ##crear vista pdf con loadView y utilizar la misma vista reportes rpt_proveedores para convertir en pdf
+            $pdf = Pdf::loadView(
+                'reportes.pdf_proveedores',
+                compact('proveedores')
+            )
+                ->setPaper('a4', 'portrait'); ## especificar tamaño de hoja y disposición
+            # de hoja landscape=horizontal, portrait=vertical
+
+            ##retornar pdf con una configuracion de pagina tipo de impresion y que se hara una descarga
+            return $pdf->download("ReporteProveedores.pdf");
+        }
+
+        return view('reportes.rpt_proveedores')->with('proveedores', $proveedores);
+    }
+
+    public function rpt_productos(Request $request)
+    {
+        // recibir datos del formulario a partir de la url get
+        $input = $request->all();
+
+        // construir la consulta con join para mostrar la descripción de la marca
+        $baseQuery = 'SELECT p.id_producto, p.descripcion, p.precio, p.tipo_iva, m.descripcion AS marca 
+                 FROM productos p 
+                 LEFT JOIN marcas m ON p.id_marca = m.id_marca';
+
+        // verificar si los filtros no estan vacios para realizar el where
+        if (!empty($input['desde']) and !empty($input['hasta'])) {
+            $productos = DB::select($baseQuery . ' WHERE p.id_producto BETWEEN ' . $input['desde'] . ' AND ' . $input['hasta']);
+        } else {
+            // si no se reciben datos, se traen todos los registros
+            $productos = DB::select($baseQuery);
+        }
+
+        if (isset($input['exportar']) && $input['exportar'] == 'pdf') {
+            $pdf = Pdf::loadView(
+                'reportes.pdf_productos',
+                compact('productos')
+            )
+                ->setPaper('a4', 'portrait');
+
+            return $pdf->download("ReporteProductos.pdf");
+        }
+
+        return view('reportes.rpt_productos')->with('productos', $productos);
+    }
+    public function rpt_sucursales(Request $request)
+    {
+        // recibir datos del formulario a partir de la url get
+        $input = $request->all();
+
+        // construir la consulta con join para mostrar la descripción de la ciudad
+        $baseQuery = 'SELECT s.id_sucursal, s.descripcion, s.direccion, s.telefono, c.descripcion AS ciudad 
+                 FROM sucursales s 
+                 INNER JOIN ciudades c ON s.id_ciudad = c.id_ciudad';
+
+        // verificar si los filtros no estan vacios para realizar el where
+        if (!empty($input['desde']) and !empty($input['hasta'])) {
+            $sucursales = DB::select($baseQuery . ' WHERE s.id_sucursal BETWEEN ' . $input['desde'] . ' AND ' . $input['hasta']);
+        } else {
+            // si no se reciben datos, se traen todos los registros
+            $sucursales = DB::select($baseQuery);
+        }
+
+        if (isset($input['exportar']) && $input['exportar'] == 'pdf') {
+            $pdf = Pdf::loadView(
+                'reportes.pdf_sucursales',
+                compact('sucursales')
+            )
+                ->setPaper('a4', 'portrait');
+
+            return $pdf->download("ReporteSucursales.pdf");
+        }
+
+        return view('reportes.rpt_sucursales')->with('sucursales', $sucursales);
+    }
 }
