@@ -18,12 +18,15 @@
         </div>
     </section>
 
-    <div class="content px-3">
+     <div class="content px-3">
 
-        @include('sweetalert::alert')
+        @include('flash::message')
 
-        <div class="clearfix"></div>
-        @includeIf('layouts.buscador', ['url' => url()->current()])
+        <div class="clearfix">
+        
+            @includeIf('layouts.buscador', ['url' => url()->current()])
+
+        </div>
         <div class="card tabla-container">
             @include('pedidos.table')
         </div>

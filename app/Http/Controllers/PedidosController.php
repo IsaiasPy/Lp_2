@@ -6,28 +6,77 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use Laracasts\Flash\Flash;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Pagination\LengthAwarePaginator;
+use RealRashid\SweetAlert\Facades\Alert;
 
 class PedidosController extends Controller
 {
     /** LISTADO */
-    public function index()
+    public function index(Request $request)
     {
-        // Igual que ventas.index: incluimos usuario (JOIN users) y cliente
-        $pedidos = DB::select(
-            "SELECT p.*, CONCAT(c.clie_nombre,' ', c.clie_apellido) AS cliente, c.clie_ci,
-                    u.name AS usuario
-               FROM pedidos p
-               JOIN clientes c ON p.id_cliente = c.id_cliente
-            JOIN users u   ON p.id_usuario = u.id
-           ORDER BY p.fecha_pedido DESC"
+        $buscar = $request->get('buscar');
+
+        if ($buscar) {
+            $pedidos = DB::select(
+                "SELECT p.*, concat(c.clie_nombre,' ', c.clie_apellido) as cliente, c.clie_ci,
+		        users.name as usuario
+                FROM pedidos p
+                JOIN clientes c ON p.id_cliente = c.id_cliente
+                JOIN users ON p.id_usuario = users.id
+                WHERE (CAST(p.id_pedido AS TEXT) iLIKE ?
+                or cast(c.clie_nombre AS TEXT) iLIKE ?
+                or cast(c.clie_apellido AS TEXT) iLIKE ?
+                or cast(users.ci AS TEXT) iLIKE ?
+                or cast(c.clie_ci AS TEXT) iLIKE ?)
+                order by p.fecha_pedido desc",
+                [
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                ]
+            );
+        } else {
+            $pedidos = DB::select(
+                "SELECT p.*, concat(c.clie_nombre,' ', c.clie_apellido) as cliente, c.clie_ci,
+	    users.name as usuario
+        FROM pedidos p
+        JOIN clientes c ON c.id_cliente = p.id_cliente
+        JOIN users ON p.id_usuario = users.id
+        order by p.fecha_pedido desc"
+            );
+        }
+
+        // Definimos los valores de paginación
+        $page = $request->input('page', 1);   // página actual (por defecto 1)
+        $perPage = 10;                        // cantidad de registros por página
+        $total = count($pedidos);           // total de registros
+
+        // Cortamos el array para solo devolver los registros de la página actual
+        $items = array_slice($pedidos, ($page - 1) * $perPage, $perPage);
+
+        // Creamos el paginador manualmente
+        $pedidos = new LengthAwarePaginator(
+            $items,        // registros de esta página
+            $total,        // total de registros
+            $perPage,      // registros por página
+            $page,         // página actual
+            [
+                'path'  => $request->url(),     // mantiene la ruta base
+                'query' => $request->query(),   // mantiene parámetros como "buscar"
+            ]
         );
 
+        // si la accion es buscardor entonces significa que se debe recargar mediante ajax la tabla
+        if ($request->ajax()) {
+            //solo llmamamos a table.blade.php y mediante compact pasamos la variable users
+            return view('pedidos.table')->with('pedidos', $pedidos);
+        }
+        // si no es busqueda entonces simplemente se muestra la vista
         return view('pedidos.index')->with('pedidos', $pedidos);
     }
-
-    /** CREAR */
     public function create()
     {
         // Select de clientes (mismo estilo que ventas)
@@ -124,7 +173,7 @@ class PedidosController extends Controller
             return redirect()->back()->withErrors($e->getMessage());
         }
 
-        Flash::success('Pedido registrado exitosamente.');
+        Alert::success('Éxito', 'Pedido registrado exitosamente.');
         return redirect()->route('pedidos.index');
     }
 
@@ -142,7 +191,7 @@ class PedidosController extends Controller
         );
 
         if (empty($pedido)) {
-            Flash::error('Pedido no encontrado');
+            Alert::error('Error', 'Pedido no encontrado');
             return redirect()->route('pedidos.index');
         }
 
@@ -166,7 +215,7 @@ class PedidosController extends Controller
         $pedido = DB::selectOne('SELECT * FROM pedidos WHERE id_pedido = ?', [$id]);
 
         if (empty($pedido)) {
-            Flash::error('Pedido no encontrado');
+            Alert::error('Error', 'Pedido no encontrado');
             return redirect()->route('pedidos.index');
         }
 
@@ -198,7 +247,7 @@ class PedidosController extends Controller
         $pedido = DB::selectOne('SELECT * FROM pedidos WHERE id_pedido = ?', [$id]);
 
         if (empty($pedido)) {
-            Flash::error('Pedido no encontrado');
+            Alert::error('Error', 'Pedido no encontrado');
             return redirect()->route('pedidos.index');
         }
 
@@ -280,7 +329,7 @@ class PedidosController extends Controller
             return redirect()->back()->withErrors($e->getMessage());
         }
 
-        Flash::success('Pedido actualizado exitosamente.');
+        Alert::success('Éxito', 'Pedido actualizado exitosamente.');
         return redirect()->route('pedidos.index');
     }
 
@@ -290,7 +339,7 @@ class PedidosController extends Controller
         $pedido = DB::selectOne('SELECT * FROM pedidos WHERE id_pedido = ?', [$id]);
 
         if (empty($pedido)) {
-            Flash::error('Pedido no encontrado');
+            Alert::error('Error', 'Pedido no encontrado');
             return redirect()->route('pedidos.index');
         }
 
@@ -305,7 +354,7 @@ class PedidosController extends Controller
             return redirect()->back()->withErrors($e->getMessage());
         }
 
-        Flash::success('Pedido cancelado.');
+        Alert::success('Éxito', 'Pedido cancelado.');
         return redirect()->route('pedidos.index');
     }
 

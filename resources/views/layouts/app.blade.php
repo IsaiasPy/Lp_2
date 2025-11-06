@@ -3,6 +3,10 @@
     <head>
         <title>LP@2</title>
         <link rel="icon" type="image/x-icon" href="">
+        <!-- AdminLTE CSS -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.1.0/dist/css/adminlte.min.css">
+        <!-- Font Awesome -->
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
         <!-- librerias css select2 -->
         <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
         <!-- personalizar estilos de select 2  -->
@@ -44,6 +48,8 @@
                 width: 20px;
             }
         </style>
+        <!-- cargar estilos css desde los blade -->
+        @stack('styles')
     </head>
 
     <body class="hold-transition sidebar-mini layout-fixed">
@@ -60,7 +66,7 @@
 
                 <ul class="ml-auto navbar-nav">
                     <li class="nav-item dropdown user-menu">
-                        <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                        <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" aria-expanded="false">
                             <img src="https://assets.infyom.com/logo/blue_logo_150x150.png"
                                 class="user-image img-circle elevation-2" alt="User Image">
                             <span class="d-none d-md-inline">{{ Auth::user()->name }}</span>
@@ -77,8 +83,8 @@
                             </li>
                             <!-- Menu Footer-->
                             <li class="user-footer">
-                                <a href="#" class="btn btn-default btn-flat">Profile</a>
-                                <a href="#" class="float-right btn btn-default btn-flat"
+                                <a href="{{ url('perfil') }}" class="btn btn-default btn-flat">Perfil</a>
+                                <a href="#" class="btn btn-default btn-flat float-right"
                                     onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
                                     Salir
                                 </a>
@@ -104,13 +110,15 @@
                 <div class="float-right d-none d-sm-block">
                     <b>Copyright</b> 3.1.0
                 </div>
-                <strong>Copyright &copy; 2025 <a href="javascript:void(0)">Curso LP 2</a>.</strong> UTIC.
+                <strong>Copyright &copy; 2025 <a href="javascript:void(0)">Curso LP 3</a>.</strong> UTIC.
             </footer>
         </div>
 
         <!-- REQUIRED SCRIPTS -->
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-        {{-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script> --}}
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- AdminLTE App -->
+        <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.1.0/dist/js/adminlte.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <!-- librerias js select2 -->
         <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
@@ -122,6 +130,22 @@
         <!-- CUSTOM SCRIPTS -->
         <script>
             $(document).ready(function() {
+                // Inicializar dropdowns de Bootstrap explícitamente
+                $('.dropdown-toggle').dropdown();
+                
+                // Asegurar que los dropdowns funcionen correctamente
+                $('.dropdown-toggle').on('click', function(e) {
+                    e.preventDefault();
+                    $(this).next('.dropdown-menu').toggle();
+                });
+
+                // Cerrar dropdown al hacer click fuera
+                $(document).on('click', function(e) {
+                    if (!$(e.target).closest('.dropdown').length) {
+                        $('.dropdown-menu').hide();
+                    }
+                });
+
                 // Inicializar select2 en los elementos con la clase .select2
                 $('.select2').select2({
                     placeholder: "Selecciona una opción", // Placeholder

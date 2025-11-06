@@ -19,7 +19,7 @@
                             <td style="text-align: center;">{{ $fila->id_cuenta }}</td>
                             <td style="text-align: center;">{{ $fila->cliente }}</td>
                             <td style="text-align: center;">{{ $fila->factura_nro }}</td>
-                            <td style="text-align: center;">{{ $fila->fecha_venta }}</td>
+                            <td style="text-align: center;">{{ Carbon\Carbon::parse($fila->fecha_venta)->format('d/m/Y') }}</td>
                             <td style="text-align: center;">{{ $fila->importe }}</td>
                             <td style="text-align: center;">
                             @if ($fila->estado == 'PENDIENTE')
@@ -30,7 +30,7 @@
                                 <span class="badge badge-danger">{{ $fila->estado }}</span>
                             @endif
                         </td>
-                            <td style="text-align: center;">{{ $fila->vencimiento }}</td>
+                            <td style="text-align: center;">{{ Carbon\Carbon::parse($fila->vencimiento)->format('d/m/Y') }}</td>
                             <td style="text-align: center;">{{ $fila->nro_cuotas }}</td>
                             </td>
                         </tr>

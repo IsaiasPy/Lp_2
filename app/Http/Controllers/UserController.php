@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -23,15 +24,64 @@ class UserController extends Controller
         $this->middleware('permission:users edit')->only(['edit', 'update']);
         $this->middleware('permission:users destroy')->only(['destroy']);
     } */
-    public function index()
+    public function index(Request $request)
     {
-        # Listar datos de usuarios
-        $users = DB::select('SELECT u.*, r.name as rol, s.descripcion as sucursal 
+        $buscar = $request->get('buscar');
+
+        if ($buscar) {
+            $users = DB::select(
+                "SELECT u.*, r.name as rol, s.descripcion as sucursal 
+                FROM users u 
+                LEFT JOIN roles r ON u.name = r.name
+                LEFT JOIN sucursales s ON u.id_sucursal = s.id_sucursal 
+                WHERE (cast(u.id as text) ILIKE ?
+                OR cast(u.ci as text) ILIKE ?
+                or cast(u.name as text) ILIKE ?
+                or cast(s.descripcion as text) ILIKE ?)
+                ORDER BY u.id DESC",
+                [
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%'
+                ]
+            );
+        } else {
+            $users = DB::select(
+                "SELECT u.*, r.name as rol, s.descripcion as sucursal 
         FROM users u 
             LEFT JOIN roles r ON u.role_id = r.id 
             LEFT JOIN sucursales s ON u.id_sucursal = s.id_sucursal 
-        ORDER BY id DESC');
+        ORDER BY u.id DESC"
+            );
+        }
 
+        // Definimos los valores de paginación
+        $page = $request->input('page', 1);   // página actual (por defecto 1)
+        $perPage = 10;                        // cantidad de registros por página
+        $total = count($users);           // total de registros
+
+        // Cortamos el array para solo devolver los registros de la página actual
+        $items = array_slice($users, ($page - 1) * $perPage, $perPage);
+
+        // Creamos el paginador manualmente
+        $pedidos = new LengthAwarePaginator(
+            $items,        // registros de esta página
+            $total,        // total de registros
+            $perPage,      // registros por página
+            $page,         // página actual
+            [
+                'path'  => $request->url(),     // mantiene la ruta base
+                'query' => $request->query(),   // mantiene parámetros como "buscar"
+            ]
+        );
+
+        // si la accion es buscardor entonces significa que se debe recargar mediante ajax la tabla
+        if ($request->ajax()) {
+            //solo llmamamos a table.blade.php y mediante compact pasamos la variable users
+            return view('users.table')->with('users', $users);
+        }
+        // si no es busqueda entonces simplemente se muestra la vista
         return view('users.index')->with('users', $users);
     }
 

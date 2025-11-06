@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -21,10 +22,52 @@ class RoleController extends Controller
         $this->middleware('permission:roles edit')->only(['edit', 'update']);
         $this->middleware('permission:roles destroy')->only(['destroy']);
     }
-    public function index()
+    public function index(Request $request)
     {
-        $roles = DB::select('SELECT * FROM roles');
-        
+        $buscar = $request->get('buscar');
+
+        if ($buscar) {
+            $roles = DB::select(
+                "SELECT r.* from roles r
+                WHERE (cast(r.name as text) ILIKE ?)
+                ORDER BY id DESC",
+                [
+                    '%' . $buscar . '%'
+                ]
+            );
+        } else {
+            $roles = DB::select(
+                "SELECT * FROM roles
+                ORDER BY id DESC"
+            );
+        }
+
+        // Definimos los valores de paginación
+        $page = $request->input('page', 1);   // página actual (por defecto 1)
+        $perPage = 10;                        // cantidad de registros por página
+        $total = count($roles);           // total de registros
+
+        // Cortamos el array para solo devolver los registros de la página actual
+        $items = array_slice($roles, ($page - 1) * $perPage, $perPage);
+
+        // Creamos el paginador manualmente
+        $roles = new LengthAwarePaginator(
+            $items,        // registros de esta página
+            $total,        // total de registros
+            $perPage,      // registros por página
+            $page,         // página actual
+            [
+                'path'  => $request->url(),     // mantiene la ruta base
+                'query' => $request->query(),   // mantiene parámetros como "buscar"
+            ]
+        );
+
+        // si la accion es buscardor entonces significa que se debe recargar mediante ajax la tabla
+        if ($request->ajax()) {
+            //solo llmamamos a table.blade.php y mediante compact pasamos la variable users
+            return view('roles.table')->with('roles', $roles);
+        }
+        // si no es busqueda entonces simplemente se muestra la vista
         return view('roles.index')->with('roles', $roles);
     }
 

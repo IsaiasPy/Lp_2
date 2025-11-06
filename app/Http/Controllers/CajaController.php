@@ -3,22 +3,69 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Laracasts\Flash\Flash;
 
 class CajaController extends Controller
 {
-    public function index()
+
+    public function index(Request $request)
     {
-        $cajas = DB::select(
-        'SELECT c.*, s.descripcion as sucursal
+        $buscar = $request->get('buscar');
+
+        if ($buscar) {
+            $cajas = DB::select(
+                'SELECT c.*, s.descripcion as sucursal
+                FROM cajas c
+                JOIN sucursales s ON c.id_sucursal = s.id_sucursal
+                WHERE (cast(c.id_caja as text) iLIKE ?
+                OR cast(c.descripcion as text) iLIKE ?
+                OR cast(s.descripcion as text) iLIKE ?)'
+                    . ' ORDER BY c.id_caja DESC',
+                [
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%'
+                ]
+            );
+        } else {
+            $cajas = DB::select(
+                'SELECT c.*, s.descripcion as sucursal
         FROM cajas c
         JOIN sucursales s ON c.id_sucursal = s.id_sucursal
-        ORDER BY c.id_caja DESC
-        ');
-        return view('cajas.index')->with('cajas', $cajas);
+        ORDER BY c.id_caja DESC'
+            );
+        }
+            // Definimos los valores de paginación
+            $page = $request->input('page', 1);   // página actual (por defecto 1)
+            $perPage = 10;                        // cantidad de registros por página
+            $total = count($cajas);           // total de registros
+
+            // Cortamos el array para solo devolver los registros de la página actual
+            $items = array_slice($cajas, ($page - 1) * $perPage, $perPage);
+
+            // Creamos el paginador manualmente
+            $cajas = new LengthAwarePaginator(
+                $items,        // registros de esta página
+                $total,        // total de registros
+                $perPage,      // registros por página
+                $page,         // página actual
+                [
+                    'path'  => $request->url(),     // mantiene la ruta base
+                    'query' => $request->query(),   // mantiene parámetros como "buscar"
+                ]
+            );
+
+            if ($request->ajax()) {
+
+                return view('cajas.table')->with('cajas', $cajas);
+            }
+
+            return view('cajas.index')->with('cajas', $cajas);
     }
+    
     public function create()
     {
         //Obtener sucursales

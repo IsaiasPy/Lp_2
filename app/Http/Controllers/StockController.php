@@ -37,7 +37,12 @@ class StockController extends Controller
 
         // 3. AÑADIR FILTROS DINÁMICAMENTE
         if ($buscar) {
-            $whereClauses[] = "(p.descripcion ILIKE ? OR suc.descripcion ILIKE ?)";
+            $whereClauses[] = "(
+            p.descripcion ILIKE ? 
+            OR suc.descripcion ILIKE ? 
+            OR s.cantidad::text ILIKE ?
+            )";
+            $bindings[] = '%' . $buscar . '%';
             $bindings[] = '%' . $buscar . '%';
             $bindings[] = '%' . $buscar . '%';
         }

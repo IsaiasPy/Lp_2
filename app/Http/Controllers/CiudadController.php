@@ -17,14 +17,21 @@ class CiudadController extends Controller
     {
         // buscar
         $buscar = $request->get('buscar');
+
         if($buscar) {
             $ciudades = DB::select(
                 'SELECT c.*, d.descripcion as departamento
                 FROM ciudades c
                 JOIN departamentos d ON c.id_departamento = d.id_departamento
-                ORDER BY c.id_ciudad desc
-                WHERE c.descripcion ILIKE ? or d.descripcion ILIKE ?',
-                ['%' . $buscar . '%', '%' . $buscar . '%']
+                WHERE (cast(c.id_ciudad as text) iLIKE ? 
+                OR cast(c.descripcion as text) iLIKE ?
+                OR cast(d.descripcion as text) iLIKE ?)'
+                . ' ORDER BY c.id_ciudad desc',
+                [
+                '%' . $buscar . '%', 
+                '%' . $buscar . '%',
+                '%' . $buscar . '%'
+                ]
             );
         }else{
             $ciudades = DB::select(

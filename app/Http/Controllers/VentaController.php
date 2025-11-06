@@ -26,10 +26,12 @@ class VentaController extends Controller
                 "SELECT v.*, concat(c.clie_nombre,' ', c.clie_apellido) as cliente, c.clie_ci,
                 users.name as usuario
                 FROM ventas v
-                    JOIN clientes c ON v.id_cliente = c.id_cliente
-                    JOIN users ON v.user_id = users.id
-                WHERE (CAST(v.id_venta AS TEXT) iLIKE ? OR CAST(c.clie_nombre AS TEXT) 
-                iLIKE ? OR CAST(c.clie_apellido AS TEXT) iLIKE ? OR CAST(v.factura_nro AS TEXT) iLIKE ?
+                JOIN clientes c ON v.id_cliente = c.id_cliente
+                JOIN users ON v.user_id = users.id
+                WHERE (CAST(v.id_venta AS TEXT) iLIKE ? 
+                OR CAST(c.clie_nombre AS TEXT) iLIKE ? 
+                OR CAST(c.clie_apellido AS TEXT) iLIKE ? 
+                OR CAST(v.factura_nro AS TEXT) iLIKE ?
                 OR CAST(c.clie_ci AS TEXT) iLIKE ?)
                 order by v.fecha_venta desc",
                 [

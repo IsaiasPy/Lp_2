@@ -27,9 +27,10 @@ class CuentasACobrarController extends Controller
 
         if (!empty($buscar)) {
             $sql = "WHERE (CONCAT(clie_nombre,' ',clie_apellido) iLIKE '%" . $buscar . "%'
+            or id_cuenta::text iLIKE '%" . $buscar . "%'
             or factura_nro iLIKE '%" . $buscar . "%' 
             or to_char(importe, 'FM999999990.00') iLIKE '%" . $buscar . "%' 
-            or to_char(vencimiento, 'YYYY-MM-DD') iLIKE '%" . $buscar . "%' 
+            or to_char(vencimiento, 'DD/MM/YYYY') iLIKE '%" . $buscar . "%' 
             or ca.estado iLIKE '%" . $buscar . "%')"; // si tiene valor agregar la condicion a la variable sql
         }
         

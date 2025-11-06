@@ -74,15 +74,13 @@ class ComprasController extends Controller
         // Defaults para required_if
         $input['intervalo'] = $input['intervalo'] ?? 0;
         $input['cantidad_cuotas'] = $input['cantidad_cuotas'] ?? 0;
-
+        
         $validator = Validator::make($input, [
             'id_proveedor'        => 'required|exists:proveedores,id_proveedor',
             'fecha_compra'        => 'required|date',
             'user_id'             => 'required|exists:users,id',
             'id_sucursal'         => 'required|exists:sucursales,id_sucursal',
-
             'factura'             => 'nullable|string|max:20',
-
             'condicion_compra'    => 'required|in:CONTADO,CREDITO',
             'intervalo'           => 'required_if:condicion_compra,CREDITO|in:0,7,15,30',
             'cantidad_cuotas'     => 'required_if:condicion_compra,CREDITO|integer|min:1|max:36', // CORREGIDO: min:0 a min:1

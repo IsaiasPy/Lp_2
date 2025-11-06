@@ -4,22 +4,66 @@ namespace App\Http\Controllers;
 
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Laracasts\Flash\Flash;
 
 class ClienteController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $clientes = DB::select('
-            SELECT c.*, ciu.descripcion as ciudad,
+        $buscar = $request->get('buscar');
+
+        if ($buscar) {
+            $clientes = DB::select('SELECT c.*, ciu.descripcion as ciudad,
             d.descripcion as departamento
             FROM clientes c
             JOIN ciudades ciu ON ciu.id_ciudad = c.id_ciudad
             JOIN departamentos d ON d.id_departamento = c.id_departamento
-        ');
+            WHERE (CAST(c.clie_ci AS TEXT) iLIKE ?
+            OR c.clie_nombre iLIKE ?
+            OR c.clie_apellido iLIKE ?)',
+            [
+            "%$buscar%", 
+            "%$buscar%", 
+            "%$buscar%"
+            ]);
+        }
+        else {
+            $clientes = DB::select('SELECT c.*, ciu.descripcion as ciudad,
+            d.descripcion as departamento
+            FROM clientes c
+            JOIN ciudades ciu ON ciu.id_ciudad = c.id_ciudad
+            JOIN departamentos d ON d.id_departamento = c.id_departamento');
+        }
+        
+        // Definimos los valores de paginación
+        $page = $request->input('page', 1);   // página actual (por defecto 1)
+        $perPage = 10;                        // cantidad de registros por página
+        $total = count($clientes);           // total de registros
 
+        // Cortamos el array para solo devolver los registros de la página actual
+        $items = array_slice($clientes, ($page - 1) * $perPage, $perPage);
+
+        // Creamos el paginador manualmente
+        $clientes = new LengthAwarePaginator(
+            $items,        // registros de esta página
+            $total,        // total de registros
+            $perPage,      // registros por página
+            $page,         // página actual
+            [
+                'path'  => $request->url(),     // mantiene la ruta base
+                'query' => $request->query(),   // mantiene parámetros como "buscar"
+            ]
+        );
+
+        // si la accion es buscardor entonces significa que se debe recargar mediante ajax la tabla
+        if ($request->ajax()) {
+            //solo llmamamos a table.blade.php y mediante compact pasamos la variable users
+            return view('clientes.table')->with('clientes', $clientes);
+        }
+        // si no es busqueda entonces simplemente se muestra la vista
         return view('clientes.index')->with('clientes', $clientes);
     }
 

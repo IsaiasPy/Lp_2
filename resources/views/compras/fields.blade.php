@@ -46,7 +46,7 @@
     {!! Form::select('condicion_compra', $condicion_compra, null, [
         'class' => 'form-control',
         'id' => 'condicion_compra',
-        'required',
+        'required'
     ]) !!}
 </div>
 

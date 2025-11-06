@@ -3,15 +3,58 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Laracasts\Flash\Flash;
 
 class MarcaController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $marcas = DB::SELECT('SELECT * FROM marcas');
+        $buscar = $request->get('buscar');
+
+        if($buscar) {
+
+            $marcas = DB::select(
+                'select m.*, m.id_marca as id, m.descripcion as descripcion
+                from marcas m
+                where (cast(m.descripcion as text) ilike ?)
+                order by id_marca desc',
+                [
+                '%' . $buscar . '%', 
+                ]
+            );
+        }else{
+            $marcas = DB::select(
+                'SELECT * from marcas'
+            );
+        }
+        // Definimos los valores de paginación
+        $page = $request->input('page', 1);   // página actual (por defecto 1)
+        $perPage = 10;                        // cantidad de registros por página
+        $total = count($marcas);           // total de registros
+
+        // Cortamos el array para solo devolver los registros de la página actual
+        $items = array_slice($marcas, ($page - 1) * $perPage, $perPage);
+
+        // Creamos el paginador manualmente
+        $marcas = new LengthAwarePaginator(
+            $items,        // registros de esta página
+            $total,        // total de registros
+            $perPage,      // registros por página
+            $page,         // página actual
+            [
+                'path'  => $request->url(),     // mantiene la ruta base
+                'query' => $request->query(),   // mantiene parámetros como "buscar"
+            ]
+        );
+
+        if ($request->ajax()) {
+
+            return view('marcas.table')->with('marcas', $marcas);
+        }
+
         return view('marcas.index')->with('marcas', $marcas);
     }
     public function create()

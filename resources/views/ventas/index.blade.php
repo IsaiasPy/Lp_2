@@ -56,7 +56,7 @@
             @includeIf('layouts.buscador', ['url' => url()->current()])
         </div>
 
-        <div class="card">
+        <div class="card tabla-container">
             @include('ventas.table')
         </div>
     </div>
@@ -70,8 +70,8 @@
 @endsection
 
 @push('scripts')
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // comenzar la carga con document ready
         $(document).ready(function() {
             $("#cerrar").on("click", function(e) {
                 e.preventDefault();

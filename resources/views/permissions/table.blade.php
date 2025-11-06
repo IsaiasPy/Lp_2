@@ -8,7 +8,7 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ($permisos as $permiso)
+                @foreach ($permissions as $permiso)
                     <tr>
                         <td>{{ $permiso->name }}</td>
                         <td style="width: 120px">
