@@ -230,11 +230,11 @@ class ClienteController extends Controller
 
         DB::update('UPDATE clientes SET 
             clie_nombre = ?, 
-            cli_apellido = ?, 
+            clie_apellido = ?, 
             clie_ci = ?, 
             clie_telefono = ?, 
             clie_direccion = ?, 
-            cli_fecha_nac = ?, 
+            clie_fecha_nac = ?, 
             id_departamento = ?, 
             id_ciudad = ? 
         WHERE id_cliente = ?', 

@@ -128,6 +128,7 @@
 <!-- Configuraciones (CORREGIDO Y ORDENADO POR RELEVANCIA) -->
 <li
     class="nav-item {{ Request::is('users*') ||
+    Request::is('auditoria*') ||
     Request::is('cargos*') ||
     Request::is('departamentos*') ||
     Request::is('proveedores*') ||
@@ -149,6 +150,7 @@
     </a>
     <ul class="nav nav-treeview"
         style="display: {{ Request::is('users*') ||
+        Request::is('auditoria*') ||
         Request::is('cargos*') ||
         Request::is('departamentos*') ||
         Request::is('proveedores*') ||
@@ -235,6 +237,13 @@
                 class="nav-link {{ Request::is('roles*') ? 'active' : '' }}">
                 <i class="fa fa-user"></i>
                 <p>Roles</p>
+            </a>
+        </li>
+
+        <li class="nav-item">
+            <a href="{{ url('auditoria') }}" class="nav-link {{ Request::is('auditoria*') ? 'active' : '' }}">
+                <i class="nav-icon fas fa-lock"></i>
+                <p>Auditoria</p>
             </a>
         </li>
 

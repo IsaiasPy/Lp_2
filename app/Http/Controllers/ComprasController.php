@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
@@ -10,11 +11,13 @@ use Laracasts\Flash\Flash;
 
 class ComprasController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Incluimos sucursal y usuario para mostrar en la tabla
-        $compras = DB::select(
-            "SELECT c.*,
+        $buscar = $request->get('buscar');
+
+        if ($buscar) {
+            $compras = DB::select(
+                'SELECT c.*,
                     p.descripcion AS proveedor,
                     u.name        AS usuario,
                     s.descripcion AS sucursal
@@ -22,12 +25,61 @@ class ComprasController extends Controller
           LEFT JOIN proveedores p ON c.id_proveedor = p.id_proveedor
           LEFT JOIN users u       ON c.user_id = u.id
           LEFT JOIN sucursales s  ON c.id_sucursal = s.id_sucursal
-           ORDER BY c.fecha_compra DESC, c.id_compra DESC"
+           WHERE (cast(c.id_compra AS TEXT) iLIKE ? 
+              OR cast(c.total AS TEXT) iLIKE ?
+              OR cast(c.factura AS TEXT) iLIKE ?
+              OR cast(p.descripcion AS TEXT) iLIKE ?
+              OR cast(u.name AS TEXT) iLIKE ?)
+              ORDER BY c.fecha_compra DESC, c.id_compra DESC',
+                [
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%'
+                ]
+            );
+        } else {
+            $compras = DB::select('SELECT c.*,
+                    p.descripcion AS proveedor,
+                    u.name        AS usuario,
+                    s.descripcion AS sucursal
+               FROM compras c
+          LEFT JOIN proveedores p ON c.id_proveedor = p.id_proveedor
+          LEFT JOIN users u       ON c.user_id = u.id
+          LEFT JOIN sucursales s  ON c.id_sucursal = s.id_sucursal
+           ORDER BY c.fecha_compra DESC, c.id_compra DESC');
+        }
+
+        // Definimos los valores de paginación
+        $page = $request->input('page', 1);   // página actual (por defecto 1)
+        $perPage = 10;                        // cantidad de registros por página
+        $total = count($compras);           // total de registros
+
+        // Cortamos el array para solo devolver los registros de la página actual
+        $items = array_slice($compras, ($page - 1) * $perPage, $perPage);
+
+        // Creamos el paginador manualmente
+        $compras = new LengthAwarePaginator(
+            $items,        // registros de esta página
+            $total,        // total de registros
+            $perPage,      // registros por página
+            $page,         // página actual
+            [
+                'path'  => $request->url(),     // mantiene la ruta base
+                'query' => $request->query(),   // mantiene parámetros como "buscar"
+            ]
         );
 
-        return view('compras.index', compact('compras'));
+        // si la accion es buscardor entonces significa que se debe recargar mediante ajax la tabla
+        if ($request->ajax()) {
+            //solo llmamamos a table.blade.php y mediante compact pasamos la variable users
+            return view('compras.table')->with('compras', $compras);
+        }
+        // si no es busqueda entonces simplemente se muestra la vista
+        return view('compras.index')->with('compras', $compras);
     }
-    
+
     public function create()
     {
         $proveedores = $this->kvProveedores(); // [id_proveedor => descripcion]
@@ -50,7 +102,7 @@ class ComprasController extends Controller
 
         return view('compras.create', compact('proveedores', 'usuario', 'user_id', 'sucursales', 'condicion_compra', 'intervalo', 'cantidad_cuotas'));
     }
-    
+
     public function buscarProducto(Request $request)
     {
         $buscar = trim((string)$request->get('query', ''));
@@ -67,14 +119,14 @@ class ComprasController extends Controller
 
         return view('compras.body_producto')->with('productos', $productos);
     }
-    
+
     public function store(Request $request)
     {
         $input = $request->all();
         // Defaults para required_if
         $input['intervalo'] = $input['intervalo'] ?? 0;
         $input['cantidad_cuotas'] = $input['cantidad_cuotas'] ?? 0;
-        
+
         $validator = Validator::make($input, [
             'id_proveedor'        => 'required|exists:proveedores,id_proveedor',
             'fecha_compra'        => 'required|date',
@@ -83,7 +135,7 @@ class ComprasController extends Controller
             'factura'             => 'nullable|string|max:20',
             'condicion_compra'    => 'required|in:CONTADO,CREDITO',
             'intervalo'           => 'required_if:condicion_compra,CREDITO|in:0,7,15,30',
-            'cantidad_cuotas'     => 'required_if:condicion_compra,CREDITO|integer|min:1|max:36', // CORREGIDO: min:0 a min:1
+            'cantidad_cuotas'     => 'required_if:condicion_compra,CREDITO|integer|max:36', // CORREGIDO: min:0 a min:1
 
             // detalle desde vista (igual que ventas): codigo[], cantidad[], precio[]
             'codigo'              => 'required|array|min:1',
@@ -107,7 +159,7 @@ class ComprasController extends Controller
             'intervalo.in'                 => 'El intervalo debe ser 0, 7, 15 o 30.',
             'cantidad_cuotas.required_if'  => 'La cantidad de cuotas es obligatoria cuando es crédito.',
             'cantidad_cuotas.integer'      => 'La cantidad de cuotas debe ser un número entero.',
-            'cantidad_cuotas.min'          => 'La cantidad de cuotas debe ser al menos 1 cuando es crédito.', // CORREGIDO
+            //'cantidad_cuotas.min'          => 'La cantidad de cuotas debe ser al menos 1 cuando es crédito.', // CORREGIDO
             'cantidad_cuotas.max'          => 'La cantidad de cuotas no debe superar 36.',
             'codigo.required'              => 'Debe agregar al menos un producto.'
         ]);
@@ -173,7 +225,7 @@ class ComprasController extends Controller
             return back()->withErrors(['db' => $e->getMessage()])->withInput();
         }
     }
-    
+
     public function show($id)
     {
         $compra = DB::selectOne(
@@ -203,7 +255,7 @@ class ComprasController extends Controller
 
         return view('compras.show', compact('compra'))->with('detalles', $detalles);
     }
-    
+
     public function edit($id)
     {
         $compra = DB::selectOne("SELECT c.*, descripcion AS sucursal FROM compras c JOIN sucursales USING(id_sucursal)   WHERE id_compra = ?", [$id]);
@@ -240,7 +292,7 @@ class ComprasController extends Controller
         return view('compras.edit', compact('compra', 'proveedores', 'usuario', 'user_id', 'intervalo', 'condicion_compra', 'sucursales'))
             ->with('detalles', $detalles);
     }
-    
+
     public function update(Request $request, $id)
     {
         $input = $request->all();
@@ -366,7 +418,7 @@ class ComprasController extends Controller
             return back()->withErrors(['db' => $e->getMessage()])->withInput();
         }
     }
-    
+
     public function destroy($id)
     {
         // Si anulas compras, probablemente debas revertir el stock
@@ -400,7 +452,7 @@ class ComprasController extends Controller
 
         return redirect()->route('compras.index');
     }
-    
+
     private function kvProveedores(): array
     {
         try {

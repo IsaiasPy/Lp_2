@@ -139,4 +139,5 @@ Route::post('exportar-cargos', [App\Http\Controllers\ReporteController::class, '
 ## Ruta para Cuentas a cobrar
 Route::resource('cuentasacobrar', App\Http\Controllers\CuentasACobrarController::class);
 
-##
+## Ruta para Auditoria
+Route::resource('auditoria', App\Http\Controllers\AuditoriaController::class);
