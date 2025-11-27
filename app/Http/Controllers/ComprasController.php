@@ -3,549 +3,520 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use Laracasts\Flash\Flash;
+use RealRashid\SweetAlert\Facades\Alert;
+use Carbon\Carbon; // Aseguramos importar Carbon para fechas
 
 class ComprasController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * Constructor para aplicar middlewares de autenticación y permisos.
+     */
+    public function __construct()
     {
-        $buscar = $request->get('buscar');
-
-        if ($buscar) {
-            $compras = DB::select(
-                'SELECT c.*,
-                    p.descripcion AS proveedor,
-                    u.name        AS usuario,
-                    s.descripcion AS sucursal
-               FROM compras c
-          LEFT JOIN proveedores p ON c.id_proveedor = p.id_proveedor
-          LEFT JOIN users u       ON c.user_id = u.id
-          LEFT JOIN sucursales s  ON c.id_sucursal = s.id_sucursal
-           WHERE (cast(c.id_compra AS TEXT) iLIKE ? 
-              OR cast(c.total AS TEXT) iLIKE ?
-              OR cast(c.factura AS TEXT) iLIKE ?
-              OR cast(p.descripcion AS TEXT) iLIKE ?
-              OR cast(u.name AS TEXT) iLIKE ?)
-              ORDER BY c.fecha_compra DESC, c.id_compra DESC',
-                [
-                    '%' . $buscar . '%',
-                    '%' . $buscar . '%',
-                    '%' . $buscar . '%',
-                    '%' . $buscar . '%',
-                    '%' . $buscar . '%'
-                ]
-            );
-        } else {
-            $compras = DB::select('SELECT c.*,
-                    p.descripcion AS proveedor,
-                    u.name        AS usuario,
-                    s.descripcion AS sucursal
-               FROM compras c
-          LEFT JOIN proveedores p ON c.id_proveedor = p.id_proveedor
-          LEFT JOIN users u       ON c.user_id = u.id
-          LEFT JOIN sucursales s  ON c.id_sucursal = s.id_sucursal
-           ORDER BY c.fecha_compra DESC, c.id_compra DESC');
-        }
-
-        // Definimos los valores de paginación
-        $page = $request->input('page', 1);   // página actual (por defecto 1)
-        $perPage = 10;                        // cantidad de registros por página
-        $total = count($compras);           // total de registros
-
-        // Cortamos el array para solo devolver los registros de la página actual
-        $items = array_slice($compras, ($page - 1) * $perPage, $perPage);
-
-        // Creamos el paginador manualmente
-        $compras = new LengthAwarePaginator(
-            $items,        // registros de esta página
-            $total,        // total de registros
-            $perPage,      // registros por página
-            $page,         // página actual
-            [
-                'path'  => $request->url(),     // mantiene la ruta base
-                'query' => $request->query(),   // mantiene parámetros como "buscar"
-            ]
-        );
-
-        // si la accion es buscardor entonces significa que se debe recargar mediante ajax la tabla
-        if ($request->ajax()) {
-            //solo llmamamos a table.blade.php y mediante compact pasamos la variable users
-            return view('compras.table')->with('compras', $compras);
-        }
-        // si no es busqueda entonces simplemente se muestra la vista
-        return view('compras.index')->with('compras', $compras);
+        $this->middleware('auth');
+        $this->middleware('permission:compras index')->only(['index']);
+        $this->middleware('permission:compras create')->only(['create', 'store']);
+        $this->middleware('permission:compras edit')->only(['edit', 'update']);
+        $this->middleware('permission:compras destroy')->only(['destroy']);
     }
 
+    /**
+     * Muestra una lista paginada de las compras.
+     */
+    public function index(Request $request){
+        // 1. LIMPIAMOS el término de búsqueda para la comparación exacta.
+        $buscar = trim($request->get('buscar'));
+        
+        $baseQuery = DB::table('compras as c')
+            ->leftJoin('proveedores as p', 'c.id_proveedor', '=', 'p.id_proveedor')
+            ->leftJoin('users as u', 'c.user_id', '=', 'u.id')
+            ->leftJoin('sucursales as s', 'c.id_sucursal', '=', 's.id_sucursal')
+            ->select('c.*', 'p.descripcion as proveedor', 'u.name as usuario', 's.descripcion as sucursal');
+        
+        if (!empty($buscar)) {
+            $baseQuery->where(function($query) use ($buscar) {
+                // Filtros de búsqueda (LIKE)
+                $query->where('p.descripcion', 'ILIKE', "%{$buscar}%")          // Proveedor
+                      ->orWhere('c.factura', 'ILIKE', "%{$buscar}%")            // Nro. Factura
+                      ->orWhere(DB::raw("CAST(c.id_compra AS TEXT)"), 'ILIKE', "%{$buscar}%") // ID Compra
+                      // ** ADICIÓN: BÚSQUEDA POR FECHA DE COMPRA **
+                      ->orWhere(DB::raw("TO_CHAR(c.fecha_compra, 'DD/MM/YYYY')"), 'ILIKE', "%{$buscar}%");
+            });
+
+            // ** ORDENAMIENTO DE PRIORIDAD POR ID **
+            // Prioriza la coincidencia exacta de ID (por ejemplo, buscar "5" pone el ID 5 primero).
+            $baseQuery->orderByRaw("
+                CASE 
+                    WHEN CAST(c.id_compra AS TEXT) = '{$buscar}' THEN 0 
+                    ELSE 1 
+                END ASC
+            ");
+            
+            // Ordenamiento secundario: por fecha (ASC) y luego por ID (ASC) para los demás resultados
+            $baseQuery->orderBy('c.fecha_compra', 'asc')
+                      ->orderBy('c.id_compra', 'asc');
+        } else {
+            // Ordenamiento por defecto sin búsqueda
+            $baseQuery->orderBy('c.fecha_compra', 'asc')
+                      ->orderBy('c.id_compra', 'asc');
+        }
+
+        $compras = $baseQuery->paginate(10); // Se aplica la paginación
+
+        // Manejo de AJAX para la paginación y búsqueda
+        if ($request->ajax()) {
+            return view('compras.table', compact('compras'))->render();
+        }
+
+        return view('compras.index', compact('compras'));
+    }
+
+    /**
+     * Muestra el formulario para crear una nueva compra.
+     */
     public function create()
     {
-        $proveedores = $this->kvProveedores(); // [id_proveedor => descripcion]
-        $usuario     = auth()->user()->name ?? '';
-        $user_id     = auth()->id();
+        $proveedores = DB::table('proveedores')->orderBy('descripcion')->pluck('descripcion', 'id_proveedor');
         $sucursales  = DB::table('sucursales')->pluck('descripcion', 'id_sucursal');
-
-        // Campos de crédito
         $condicion_compra = ['CONTADO' => 'CONTADO', 'CREDITO' => 'CREDITO'];
-        $intervalo = [
-            '7'  => '7 Días',
-            '15' => '15 Días',
-            '30' => '30 Días'
-        ];
-        // Cantidad de intervalos (cuotas) 1..12
-        $cantidad_cuotas = [];
-        for ($i = 1; $i <= 12; $i++) {
-            $cantidad_cuotas[(string)$i] = (string)$i;
-        }
+        $intervalo = ['7' => '7 Días', '15' => '15 Días', '30' => '30 Días'];
 
-        return view('compras.create', compact('proveedores', 'usuario', 'user_id', 'sucursales', 'condicion_compra', 'intervalo', 'cantidad_cuotas'));
+        return view('compras.create', compact('proveedores', 'sucursales', 'condicion_compra', 'intervalo'));
     }
 
-    public function buscarProducto(Request $request)
-    {
-        $buscar = trim((string)$request->get('query', ''));
-
-        if ($buscar !== '') {
-            $buscarLower = mb_strtolower($buscar, 'UTF-8');
-            $sql = "SELECT p.* FROM productos p 
-                    WHERE LOWER(p.descripcion) LIKE ? OR CAST(p.id_producto AS TEXT) LIKE ?
-                    LIMIT 50";
-            $productos = DB::select($sql, ["%{$buscarLower}%", "%{$buscarLower}%"]);
-        } else {
-            $productos = DB::select("SELECT p.* FROM productos p LIMIT 20");
-        }
-
-        return view('compras.body_producto')->with('productos', $productos);
-    }
-
+    /**
+     * Guarda una nueva compra en la base de datos.
+     */
     public function store(Request $request)
     {
         $input = $request->all();
-        // Defaults para required_if
-        $input['intervalo'] = $input['intervalo'] ?? 0;
-        $input['cantidad_cuotas'] = $input['cantidad_cuotas'] ?? 0;
+
+        if (!$request->has('codigo') || empty($input['codigo'])) {
+            Alert::error('Error de Validación', 'Debe agregar al menos un producto a la compra.');
+            return redirect()->back()->withInput();
+        }
+
+        if (($input['condicion_compra'] ?? 'CONTADO') === 'CONTADO') {
+            $input['intervalo'] = null;
+            $input['cantidad_cuotas'] = null;
+        }
 
         $validator = Validator::make($input, [
-            'id_proveedor'        => 'required|exists:proveedores,id_proveedor',
-            'fecha_compra'        => 'required|date',
-            'user_id'             => 'required|exists:users,id',
-            'id_sucursal'         => 'required|exists:sucursales,id_sucursal',
-            'factura'             => 'nullable|string|max:20',
-            'condicion_compra'    => 'required|in:CONTADO,CREDITO',
-            'intervalo'           => 'required_if:condicion_compra,CREDITO|in:0,7,15,30',
-            'cantidad_cuotas'     => 'required_if:condicion_compra,CREDITO|integer|max:36', // CORREGIDO: min:0 a min:1
-
-            // detalle desde vista (igual que ventas): codigo[], cantidad[], precio[]
-            'codigo'              => 'required|array|min:1',
-            'codigo.*'            => 'required|integer',
-            'cantidad'            => 'required|array|min:1',
-            'cantidad.*'          => 'required|numeric|min:1',
-            'precio'              => 'required|array|min:1',
-            'precio.*'            => 'required',
+            'id_proveedor'     => 'required|exists:proveedores,id_proveedor',
+            'fecha_compra'     => 'required|date|before_or_equal:today',
+            'id_sucursal'      => 'required|exists:sucursales,id_sucursal',
+            'factura'          => 'nullable|string|max:30',
+            'condicion_compra' => 'required|in:CONTADO,CREDITO',
+            'intervalo'        => 'nullable|required_if:condicion_compra,CREDITO|in:7,15,30',
+            'cantidad_cuotas'  => 'nullable|required_if:condicion_compra,CREDITO|integer|min:1|max:36',
+            'codigo.*'         => 'required|integer|exists:productos,id_producto',
+            'cantidad.*'       => 'required|numeric|min:1',
+            'precio.*'         => 'required',
         ], [
-            'id_proveedor.required'        => 'El proveedor es obligatorio.',
-            'id_proveedor.exists'          => 'El proveedor no es válido.',
-            'fecha_compra.required'        => 'La fecha es obligatoria.',
-            'fecha_compra.date'            => 'La fecha no es válida.',
-            'user_id.required'             => 'El usuario es obligatorio.',
-            'user_id.exists'               => 'El usuario no es válido.',
-            'id_sucursal.required'         => 'La sucursal es obligatoria.',
-            'id_sucursal.exists'           => 'La sucursal no es válida.',
-            'condicion_compra.required'    => 'La condición es obligatoria.',
-            'condicion_compra.in'          => 'La condición no es válida.',
-            'intervalo.required_if'        => 'El intervalo es obligatorio cuando es crédito.',
-            'intervalo.in'                 => 'El intervalo debe ser 0, 7, 15 o 30.',
-            'cantidad_cuotas.required_if'  => 'La cantidad de cuotas es obligatoria cuando es crédito.',
-            'cantidad_cuotas.integer'      => 'La cantidad de cuotas debe ser un número entero.',
-            //'cantidad_cuotas.min'          => 'La cantidad de cuotas debe ser al menos 1 cuando es crédito.', // CORREGIDO
-            'cantidad_cuotas.max'          => 'La cantidad de cuotas no debe superar 36.',
-            'codigo.required'              => 'Debe agregar al menos un producto.'
+            'fecha_compra.before_or_equal' => 'La fecha de compra no puede ser futura.',
+            'codigo.*.required' => 'Debe agregar al menos un producto a la compra.',
+            'intervalo.required_if' => 'El intervalo es obligatorio para compras a crédito.',
+            'cantidad_cuotas.required_if' => 'La cantidad de cuotas es obligatoria para compras a crédito.',
         ]);
 
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
         }
 
-        $idSucursal = (int)$input['id_sucursal'];
-
-        // Calcular total con normalización robusta (1.234.567,89 -> 1234567.89)
-        $total = 0.0;
-        foreach ($input['codigo'] as $i => $codigo) {
-            $monto = str_replace('.', '', $input['precio'][$i] ?? '0');
-            $cant  = (int)($input['cantidad'][$i] ?? 0);
-            $total += ($cant * $monto);
-        }
-        $total = round($total, 2);
-
         DB::beginTransaction();
         try {
-            // Si es contado, forzamos 0s en crédito
-            if (($input['condicion_compra'] ?? 'CONTADO') === 'CONTADO') {
-                $input['intervalo'] = 0;
-                $input['cantidad_cuotas'] = 0;
+            $total = 0;
+            foreach ($input['precio'] as $i => $precio_str) {
+                // CORRECCIÓN: Eliminar todos los caracteres que no sean dígitos
+                $precio_limpio = preg_replace('/[^0-9]/', '', $precio_str);
+                $precio = (float)$precio_limpio;
+                $cantidad = (int)$input['cantidad'][$i];
+                $total += $precio * $cantidad;
             }
 
-            // Cabecera
+            // SOLUCIÓN: Especificar el nombre de la columna primaria para insertGetId
             $idCompra = DB::table('compras')->insertGetId([
-                'id_proveedor'        => (int)$input['id_proveedor'],
-                'fecha_compra'        => $input['fecha_compra'],
-                'total'               => $total,
-                'user_id'             => (int)$input['user_id'],
-                'id_sucursal'         => $idSucursal,
-                'factura'             => $input['factura'] ?? null,
-                'condicion_compra'    => $input['condicion_compra'],
-                'intervalo'           => (int)$input['intervalo'],
-                'cantidad_cuotas'     => (int)$input['cantidad_cuotas'],
-            ], 'id_compra');
+                'id_proveedor'     => $input['id_proveedor'],
+                'fecha_compra'     => $input['fecha_compra'],
+                'total'            => $total,
+                'user_id'          => auth()->id(),
+                'id_sucursal'      => $input['id_sucursal'],
+                'factura'          => $input['factura'],
+                'condicion_compra' => $input['condicion_compra'],
+                'intervalo'        => $input['intervalo'] ?? 0,
+                'cantidad_cuotas'  => $input['cantidad_cuotas'] ?? 0,
+                'estado'           => 'COMPLETADO',
+            ], 'id_compra'); // Especificamos que la columna primaria es 'id_compra'
 
-            // Detalle + AUMENTO de stock por sucursal
-            foreach ($input['codigo'] as $i => $codigo) {
-                $monto = str_replace('.', '', $input['precio_unitario'][$i] ?? '0');
-                $cant  = (int)($input['cantidad'][$i] ?? 0);
+            foreach ($input['codigo'] as $i => $idProducto) {
+                // CORRECCIÓN: Eliminar todos los caracteres que no sean dígitos
+                $precio_limpio = preg_replace('/[^0-9]/', '', $input['precio'][$i]);
+                $precio = (float)$precio_limpio;
+                $cantidad = (int)$input['cantidad'][$i];
 
+                // SOLUCIÓN: Especificar explícitamente las columnas para evitar que Laravel intente insertar 'id'
                 DB::table('detalle_compras')->insert([
                     'id_compra'       => $idCompra,
-                    'id_producto'     => (int)$codigo,
-                    'cantidad'        => $cant,
-                    'precio_unitario' => $monto,
+                    'id_producto'     => $idProducto,
+                    'cantidad'        => $cantidad,
+                    'precio_unitario' => $precio,
                 ]);
 
-                // stock += cantidad
-                $this->increaseStock((int)$codigo, $cant, $idSucursal);
+                $this->upsertStock($idProducto, $cantidad, $input['id_sucursal']);
             }
 
             DB::commit();
-            Flash::success('Compra registrada, stock actualizado.');
+            Alert::success('Éxito', 'Compra registrada y stock actualizado.');
             return redirect()->route('compras.index');
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error en compras.store: ' . $e->getMessage());
-            return back()->withErrors(['db' => $e->getMessage()])->withInput();
-        }
-    }
 
-    public function show($id)
-    {
-        $compra = DB::selectOne(
-            "SELECT c.*,
-                    p.descripcion AS proveedor,
-                    u.name        AS usuario,
-                    s.descripcion AS sucursal
-               FROM compras c
-               JOIN proveedores p ON c.id_proveedor = p.id_proveedor
-               JOIN users u       ON c.user_id = u.id
-               JOIN sucursales s  ON c.id_sucursal = s.id_sucursal
-              WHERE c.id_compra = ?",
-            [$id]
-        );
-        if (!$compra) {
-            Flash::error('Compra no encontrada.');
-            return redirect()->route('compras.index');
-        }
+            // MODIFICACIÓN: Mostrar el error específico en lugar del mensaje genérico
+            Log::error('Error en ComprasController@store: ' . $e->getMessage() . ' en la línea ' . $e->getLine());
 
-        $detalles = DB::select(
-            "SELECT d.*, pr.descripcion
-               FROM detalle_compras d
-          LEFT JOIN productos pr ON pr.id_producto = d.id_producto
-              WHERE d.id_compra = ?",
-            [$id]
-        );
-
-        return view('compras.show', compact('compra'))->with('detalles', $detalles);
-    }
-
-    public function edit($id)
-    {
-        $compra = DB::selectOne("SELECT c.*, descripcion AS sucursal FROM compras c JOIN sucursales USING(id_sucursal)   WHERE id_compra = ?", [$id]);
-        if (!$compra) {
-            Flash::error('Compra no encontrada.');
-            return redirect()->route('compras.index');
-        }
-
-        $proveedores = $this->kvProveedores(); // [id_proveedor => descripcion]
-        $usuario     = auth()->user()->name ?? '';
-        $user_id     = auth()->id();
-        $condicion_compra = [
-            'CONTADO' => 'CONTADO',
-            'CREDITO' => 'CREDITO'
-        ];
-
-        $intervalo = [
-            '7'  => '7 Días',
-            '15' => '15 Días',
-            '30' => '30 Días'
-        ];
-
-        // Enviar datos de sucursales
-        $sucursales = DB::table('sucursales')->pluck('descripcion', 'id_sucursal');
-
-        $detalles = DB::select(
-            "SELECT d.*, pr.descripcion
-               FROM detalle_compras d
-          LEFT JOIN productos pr ON pr.id_producto = d.id_producto
-              WHERE d.id_compra = ?",
-            [$id]
-        );
-
-        return view('compras.edit', compact('compra', 'proveedores', 'usuario', 'user_id', 'intervalo', 'condicion_compra', 'sucursales'))
-            ->with('detalles', $detalles);
-    }
-
-    public function update(Request $request, $id)
-    {
-        $input = $request->all();
-        $input['intervalo'] = $input['intervalo'] ?? 0;
-        $input['cantidad_cuotas'] = $input['cantidad_cuotas'] ?? 0;
-
-        $validator = Validator::make($input, [
-            'id_proveedor'        => 'required|exists:proveedores,id_proveedor',
-            'fecha_compra'        => 'required|date',
-            'user_id'             => 'required|exists:users,id',
-            'id_sucursal'         => 'required|exists:sucursales,id_sucursal',
-
-            'factura'             => 'nullable|string|max:20',
-
-            'condicion_compra'    => 'required|in:CONTADO,CREDITO',
-            'intervalo'           => 'required_if:condicion_compra,CREDITO|in:0,7,15,30',
-            'cantidad_cuotas'     => 'required_if:condicion_compra,CREDITO|integer|min:1|max:36', // CORREGIDO: min:0 a min:1
-
-            'codigo'              => 'required|array|min:1',
-            'codigo.*'            => 'required|integer',
-            'cantidad'            => 'required|array|min:1',
-            'cantidad.*'          => 'required|numeric|min:1',
-            'precio_unitario'     => 'required|array|min:1',
-            'precio_unitario.*'   => 'required',
-        ], [
-            'id_proveedor.required'        => 'El proveedor es obligatorio.',
-            'id_proveedor.exists'          => 'El proveedor no es válido.',
-            'fecha_compra.required'        => 'La fecha es obligatoria.',
-            'fecha_compra.date'            => 'La fecha no es válida.',
-            'user_id.required'             => 'El usuario es obligatorio.',
-            'user_id.exists'               => 'El usuario no es válido.',
-            'id_sucursal.required'         => 'La sucursal es obligatoria.',
-            'id_sucursal.exists'           => 'La sucursal no es válida.',
-            'condicion_compra.required'    => 'La condición es obligatoria.',
-            'condicion_compra.in'          => 'La condición no es válida.',
-            'intervalo.required_if'        => 'El intervalo es obligatorio cuando es crédito.',
-            'intervalo.in'                 => 'El intervalo debe ser 0, 7, 15 o 30.',
-            'cantidad_cuotas.required_if'  => 'La cantidad de cuotas es obligatoria cuando es crédito.',
-            'cantidad_cuotas.integer'      => 'La cantidad de cuotas debe ser un número entero.',
-            'cantidad_cuotas.min'          => 'La cantidad de cuotas debe ser al menos 1 cuando es crédito.', // CORREGIDO
-            'cantidad_cuotas.max'          => 'La cantidad de cuotas no debe superar 36.',
-            'codigo.required'              => 'Debe agregar al menos un producto.'
-        ]);
-
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
-        }
-
-        $idSucursal = (int)$request->input('id_sucursal');
-
-        // Mapa actual (antes de cambios) para ajustar stock por diferencia
-        $detalleAnt = DB::table('detalle_compras')->where('id_compra', $id)->get();
-        $mapAnt = [];
-        foreach ($detalleAnt as $d) {
-            Log::error('Detalle actual: id_producto=' . $d->id_producto . ', cantidad=' . $d->cantidad);
-            $mapAnt[$d->id_producto] = ($mapAnt[$d->id_producto] ?? 0) + (int)$d->cantidad;
-        }
-
-        // Mapa nuevo + total
-        $mapNuevo = [];
-        $total = 0.0;
-        foreach ($input['codigo'] as $i => $codigo) {
-            $monto = $this->normalizeNumber($input['precio'][$i] ?? 0);
-            $cant  = (int)($input['cantidad'][$i] ?? 0);
-            $total += ($cant * $monto);
-            $mapNuevo[(int)$codigo] = ($mapNuevo[(int)$codigo] ?? 0) + $cant;
-        }
-        $total = round($total, 2);
-
-        DB::beginTransaction();
-        try {
-            // Si es contado, forzamos 0s
-            if (($input['condicion_compra'] ?? 'CONTADO') === 'CONTADO') {
-                $input['intervalo'] = 0;
-                $input['cantidad_cuotas'] = 0;
+            // En modo de desarrollo, mostrar el error completo
+            if (config('app.debug')) {
+                Alert::error('Error al registrar la compra', $e->getMessage() . ' en la línea ' . $e->getLine());
+            } else {
+                // En producción, mostrar un mensaje más genérico pero registrar el error completo
+                Alert::error('Error Inesperado', 'No se pudo registrar la compra. Contacte al administrador.');
             }
 
-            // Ajustar stock por diferencia
-            $todosIds = array_unique(array_merge(array_keys($mapAnt), array_keys($mapNuevo)));
-            foreach ($todosIds as $idProd) {
-                $old   = (int)($mapAnt[$idProd] ?? 0);
-                $new   = (int)($mapNuevo[$idProd] ?? 0);
-                $delta = $new - $old;
-                if ($delta > 0) {
-                    $this->increaseStock($idProd, $delta, $idSucursal);
-                } elseif ($delta < 0) {
-                    $this->decreaseStock($idProd, abs($delta), $idSucursal);
-                }
-            }
-
-            // Actualizar cabecera
-            DB::table('compras')->where('id_compra', $id)->update([
-                'id_proveedor'        => (int)$input['id_proveedor'],
-                'fecha_compra'        => $input['fecha_compra'],
-                'total'               => $total,
-                'user_id'             => (int)$input['user_id'],
-                'id_sucursal'         => $idSucursal,
-                'factura'             => $input['factura'] ?? null,
-                'condicion_compra'    => $input['condicion_compra'],
-                'intervalo'           => (int)$input['intervalo'],
-                'cantidad_cuotas'     => (int)$input['cantidad_cuotas'],
-            ]);
-
-            // Reemplazar detalle (simplifica; alternativamente upsert)
-            DB::table('detalle_compras')->where('id_compra', $id)->delete();
-            foreach ($input['codigo'] as $i => $codigo) {
-                $monto = $this->normalizeNumber($input['precio_unitario'][$i] ?? 0);
-                $cant  = (int)($input['cantidad'][$i] ?? 0);
-                DB::table('detalle_compras')->insert([
-                    'id_compra'       => $id,
-                    'id_producto'     => (int)$codigo,
-                    'cantidad'        => $cant,
-                    'precio_unitario' => $monto,
-                ]);
-            }
-
-            DB::commit();
-            Flash::success('Compra actualizada y stock ajustado.');
-            return redirect()->route('compras.show', $id);
-        } catch (\Throwable $e) {
-            DB::RollBack();
-            Log::error('Error en compras.update: ' . $e->getMessage());
-            return back()->withErrors(['db' => $e->getMessage()])->withInput();
+            return back()->withInput();
         }
     }
 
+    /**
+     * Anula una compra existente.
+     */
     public function destroy($id)
     {
-        // Si anulas compras, probablemente debas revertir el stock
-        $compra = DB::selectOne("SELECT * FROM compras WHERE id_compra = ?", [$id]);
+        $compra = DB::table('compras')->where('id_compra', $id)->first();
+
         if (!$compra) {
-            Flash::error('Compra no encontrada.');
+            Alert::error('Error', 'Compra no encontrada.');
             return redirect()->route('compras.index');
         }
 
-        // Cargar detalle para ajustar stock en -
+        if ($compra->estado === 'ANULADO') {
+            Alert::warning('Atención', 'Esta compra ya fue anulada anteriormente.');
+            return redirect()->route('compras.index');
+        }
+
         $detalles = DB::table('detalle_compras')->where('id_compra', $id)->get();
+
         DB::beginTransaction();
         try {
-            // Revertir stock
-            foreach ($detalles as $d) {
-                $this->decreaseStock((int)$d->id_producto, (int)$d->cantidad, (int)($compra->id_sucursal ?? 0));
+            /** @var \stdClass $detalle */
+            foreach ($detalles as $detalle) {
+                $stock_actual = DB::table('stocks')
+                    ->where('id_producto', $detalle->id_producto)
+                    ->where('id_sucursal', $compra->id_sucursal)
+                    ->value('cantidad');
+
+                if ($stock_actual === null || $stock_actual < $detalle->cantidad) {
+                    $producto = DB::table('productos')->where('id_producto', $detalle->id_producto)->value('descripcion');
+                    throw new \Exception("No se puede anular. El stock para '{$producto}' (actual: {$stock_actual}) es insuficiente para restar la cantidad de la compra ({$detalle->cantidad}).");
+                }
+            }
+            /** @var \stdClass $detalle */
+            foreach ($detalles as $detalle) {
+                $this->upsertStock($detalle->id_producto, -$detalle->cantidad, $compra->id_sucursal);
             }
 
-            // Marcar estado si existe; si no, opcionalmente borrar detalle + cabecera
-            if (DB::getSchemaBuilder()->hasColumn('compras', 'estado')) {
-                DB::update("UPDATE compras SET estado = 'ANULADO' WHERE id_compra = ?", [$id]);
-            }
+            DB::table('compras')->where('id_compra', $id)->update(['estado' => 'ANULADO']);
+
+            // ** CORRECCIÓN: Si anulamos la compra, también deberíamos anular o borrar las cuotas pendientes **
+            DB::table('cuentas_a_pagar')
+                ->where('id_compra', $id)
+                ->where('estado', 'PENDIENTE')
+                ->update(['estado' => 'ANULADO']); // O ->delete() si prefieres borrarlas
 
             DB::commit();
-            Flash::success('Compra anulada y stock revertido.');
-        } catch (\Throwable $e) {
+            Alert::success('Éxito', 'Compra anulada y stock revertido.');
+        } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error en compras.destroy: ' . $e->getMessage());
-            return back()->withErrors(['db' => $e->getMessage()]);
+            Log::error('Error en ComprasController@destroy: ' . $e->getMessage());
+            Alert::error('Error al Anular', $e->getMessage());
         }
 
         return redirect()->route('compras.index');
     }
 
-    private function kvProveedores(): array
+    /**
+     * Inserta o actualiza el stock de un producto en una sucursal.
+     * Acepta cantidades positivas (sumar) y negativas (restar).
+     */
+    private function upsertStock(int $idProducto, int $cantidad, int $idSucursal): void
     {
+        if ($cantidad == 0) return;
+
+        $stock = DB::table('stocks')
+            ->where('id_producto', $idProducto)
+            ->where('id_sucursal', $idSucursal)
+            ->first();
+
+        if ($stock) {
+            DB::table('stocks')->where('id_stock', $stock->id_stock)->increment('cantidad', $cantidad);
+        } elseif ($cantidad > 0) {
+            DB::table('stocks')->insert([
+                'id_producto' => $idProducto,
+                'id_sucursal' => $idSucursal,
+                'cantidad'    => $cantidad,
+            ]);
+        }
+    }
+
+    public function show($id)
+    {
+        $compra = DB::table('compras as c')
+            ->join('proveedores as p', 'c.id_proveedor', '=', 'p.id_proveedor')
+            ->join('users as u', 'c.user_id', '=', 'u.id')
+            ->join('sucursales as s', 'c.id_sucursal', '=', 's.id_sucursal')
+            ->select('c.*', 'p.descripcion as proveedor', 'u.name as usuario', 's.descripcion as sucursal')
+            ->where('c.id_compra', $id)->first();
+
+        if (!$compra) {
+            Alert::error('Error', 'Compra no encontrada.');
+            return redirect()->route('compras.index');
+        }
+        $detalles = DB::table('detalle_compras as d')
+            ->leftJoin('productos as pr', 'pr.id_producto', '=', 'd.id_producto')
+            ->select('d.*', 'pr.descripcion')
+            ->where('d.id_compra', $id)->get();
+
+        return view('compras.show', compact('compra', 'detalles'));
+    }
+
+    public function edit($id)
+    {
+        $compra = DB::table('compras')->where('id_compra', $id)->first();
+        if (!$compra) {
+            Alert::error('Error', 'Compra no encontrada.');
+            return redirect()->route('compras.index');
+        }
+
+        $proveedores = DB::table('proveedores')->orderBy('descripcion')->pluck('descripcion', 'id_proveedor');
+        $sucursales  = DB::table('sucursales')->pluck('descripcion', 'id_sucursal');
+        $condicion_compra = ['CONTADO' => 'CONTADO', 'CREDITO' => 'CREDITO'];
+        $intervalo = ['7' => '7 Días', '15' => '15 Días', '30' => '30 Días'];
+
+        $detalles = DB::table('detalle_compras as d')
+            ->join('productos as p', 'd.id_producto', '=', 'p.id_producto')
+            ->select('d.*', 'p.descripcion', 'd.precio_unitario')
+            ->where('d.id_compra', $id)->get();
+
+        return view('compras.edit', compact('compra', 'detalles', 'proveedores', 'sucursales', 'condicion_compra', 'intervalo'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $input = $request->all();
+
+        // Verificar que la compra exista
+        $compra = DB::table('compras')->where('id_compra', $id)->first();
+        if (!$compra) {
+            Alert::error('Error', 'Compra no encontrada.');
+            return redirect()->route('compras.index');
+        }
+
+        // Verificar que la compra no esté anulada
+        if ($compra->estado === 'ANULADO') {
+            Alert::warning('Atención', 'No se puede modificar una compra anulada.');
+            return redirect()->route('compras.index');
+        }
+
+        if (!$request->has('codigo') || empty($input['codigo'])) {
+            Alert::error('Error de Validación', 'Debe agregar al menos un producto a la compra.');
+            return redirect()->back()->withInput();
+        }
+
+        // Si es CONTADO, establecer valores nulos para los campos de crédito
+        if (($input['condicion_compra'] ?? 'CONTADO') === 'CONTADO') {
+            $input['intervalo'] = null;
+            $input['cantidad_cuotas'] = null;
+        }
+
+        $validator = Validator::make($input, [
+            'id_proveedor'     => 'required|exists:proveedores,id_proveedor',
+            'fecha_compra'     => 'required|date|before_or_equal:today',
+            'id_sucursal'      => 'required|exists:sucursales,id_sucursal',
+            'factura'          => 'nullable|string|max:30',
+            'condicion_compra' => 'required|in:CONTADO,CREDITO',
+            'intervalo'        => 'nullable|required_if:condicion_compra,CREDITO|in:7,15,30',
+            'cantidad_cuotas'  => 'nullable|required_if:condicion_compra,CREDITO|integer|min:1|max:36',
+            'codigo.*'         => 'required|integer|exists:productos,id_producto',
+            'cantidad.*'       => 'required|numeric|min:1',
+            'precio.*'         => 'required',
+        ], [
+            'fecha_compra.before_or_equal' => 'La fecha de compra no puede ser futura.',
+            'codigo.*.required' => 'Debe agregar al menos un producto a la compra.',
+            'intervalo.required_if' => 'El intervalo es obligatorio para compras a crédito.',
+            'cantidad_cuotas.required_if' => 'La cantidad de cuotas es obligatoria para compras a crédito.',
+        ]);
+
+        if ($validator->fails()) {
+            $html = '<ul style="text-align: left;">';
+            foreach ($validator->errors()->all() as $error) {
+                $html .= "<li>$error</li>";
+            }
+            $html .= '</ul>';
+            Alert::html('Error de Validación', $html, 'error');
+            return back()->withErrors($validator)->withInput();
+        }
+
+        DB::beginTransaction();
         try {
-            return DB::table('proveedores')->orderBy('descripcion')->pluck('descripcion', 'id_proveedor')->toArray();
-        } catch (\Throwable $e) {
-            return [];
-        }
-    }
-
-    /** Normaliza "1.234.567,89" -> 1234567.89 y "1234.50" -> 1234.50 */
-    private function normalizeNumber($value): float
-    {
-        if (is_null($value)) return 0.0;
-        if (is_numeric($value)) return (float)$value;
-        $s = trim((string)$value);
-        if ($s === '') return 0.0;
-        $s = str_replace([' ', "\u{00A0}"], '', $s); // espacios
-        $s = str_replace('.', '', $s);               // miles
-        $s = str_replace(',', '.', $s);              // decimal
-        return (float)(is_numeric($s) ? $s : 0.0);
-    }
-
-    /** Aumenta stock (global o por sucursal) */
-    private function increaseStock(int $idProducto, int $cantidad, $idSucursal = null): void
-    {
-        if ($cantidad <= 0) return;
-        if (!DB::getSchemaBuilder()->hasTable('stocks')) return;
-
-        $hasSucursal = DB::getSchemaBuilder()->hasColumn('stocks', 'id_sucursal');
-
-        if ($hasSucursal) {
-            if ($idSucursal === null) {
-                Log::warning('increaseStock: id_sucursal no provisto; no se actualiza stock por sucursal.');
-                return;
+            // Calcular el nuevo total
+            $total = 0;
+            foreach ($input['precio'] as $i => $precio_str) {
+                $precio_limpio = preg_replace('/[^0-9]/', '', $precio_str);
+                $precio = (float)$precio_limpio;
+                $cantidad = (int)$input['cantidad'][$i];
+                $total += $precio * $cantidad;
             }
-            $row = DB::table('stocks')->where([
-                'id_producto' => $idProducto,
-                'id_sucursal' => $idSucursal,
-            ])->first();
 
-            if ($row) {
-                DB::table('stocks')->where([
-                    'id_producto' => $idProducto,
-                    'id_sucursal' => $idSucursal,
-                ])->update(['cantidad' => ((int)$row->cantidad) + $cantidad]);
+            // Actualizar la compra
+            DB::table('compras')->where('id_compra', $id)->update([
+                'id_proveedor'     => $input['id_proveedor'],
+                'fecha_compra'     => $input['fecha_compra'],
+                'total'            => $total,
+                'factura'          => $input['factura'],
+                'condicion_compra' => $input['condicion_compra'],
+                'intervalo'        => $input['intervalo'] ?? 0,
+                'cantidad_cuotas'  => $input['cantidad_cuotas'] ?? 0,
+            ]);
+
+            // Obtener los detalles originales para comparar
+            $detallesOriginales = DB::table('detalle_compras')->where('id_compra', $id)->get()->keyBy('id_producto');
+
+            // Procesar cada producto del formulario
+            foreach ($input['codigo'] as $i => $idProducto) {
+                $precio_limpio = preg_replace('/[^0-9]/', '', $input['precio'][$i]);
+                $precio = (float)$precio_limpio;
+                $cantidad = (int)$input['cantidad'][$i];
+
+                // Verificar si el producto ya estaba en la compra original
+                if (isset($detallesOriginales[$idProducto])) {
+                    $detalleOriginal = $detallesOriginales[$idProducto];
+
+                    // Calcular la diferencia de cantidad para ajustar el stock
+                    $diferenciaCantidad = $cantidad - $detalleOriginal->cantidad;
+
+                    // Actualizar el detalle
+                    DB::table('detalle_compras')
+                        ->where('id_detalle_compra', $detalleOriginal->id_detalle_compra)
+                        ->update([
+                            'cantidad' => $cantidad,
+                            'precio_unitario' => $precio,
+                        ]);
+
+                    // Ajustar el stock según la diferencia
+                    if ($diferenciaCantidad != 0) {
+                        $this->upsertStock($idProducto, $diferenciaCantidad, $input['id_sucursal']);
+                    }
+
+                    // Eliminar de la lista de originales para procesar los que se eliminaron
+                    unset($detallesOriginales[$idProducto]);
+                } else {
+                    // Es un producto nuevo, agregarlo
+                    DB::table('detalle_compras')->insert([
+                        'id_compra' => $id,
+                        'id_producto' => $idProducto,
+                        'cantidad' => $cantidad,
+                        'precio_unitario' => $precio,
+                    ]);
+
+                    // Aumentar el stock
+                    $this->upsertStock($idProducto, $cantidad, $input['id_sucursal']);
+                }
+            }
+
+            // Eliminar los productos que ya no están en el formulario
+            foreach ($detallesOriginales as $detalleOriginal) {
+                // Eliminar el detalle
+                DB::table('detalle_compras')
+                    ->where('id_detalle_compra', $detalleOriginal->id_detalle_compra)
+                    ->delete();
+
+                // Reducir el stock
+                $this->upsertStock($detalleOriginal->id_producto, -$detalleOriginal->cantidad, $compra->id_sucursal);
+            }
+
+            // =========================================================================
+            // REGENERACIÓN DE CUOTAS (Lógica Crítica para cambio de 6 a 3 cuotas)
+            // =========================================================================
+            if ($input['condicion_compra'] === 'CREDITO') {
+                // Verificar si existen cuotas ya pagadas para no romper integridad
+                $cuotasPagadas = DB::table('cuentas_a_pagar')
+                    ->where('id_compra', $id)
+                    ->where('estado', '!=', 'PENDIENTE')
+                    ->exists();
+                
+                if ($cuotasPagadas) {
+                    throw new \Exception("No se puede editar las cuotas porque ya existen pagos registrados. Anule los pagos primero.");
+                }
+                
+                // Borrar cuotas viejas (ej: las 6 cuotas anteriores)
+                DB::table('cuentas_a_pagar')->where('id_compra', $id)->delete();
+                
+                // Generar nuevas cuotas (ej: las 3 nuevas)
+                $cantCuotas = (int)$input['cantidad_cuotas'];
+                $montoCuota = round($total / $cantCuotas);
+                $fechaVencimiento = Carbon::parse($input['fecha_compra']);
+                $intervaloDias = (int)$input['intervalo'];
+                
+                for ($i = 1; $i <= $cantCuotas; $i++) {
+                    $fechaVencimiento->addDays($intervaloDias); // Sumar días al vencimiento
+                    
+                    DB::table('cuentas_a_pagar')->insert([
+                        'id_proveedor' => $input['id_proveedor'],
+                        'id_compra'    => $id,
+                        'vencimiento'  => $fechaVencimiento->copy(),
+                        'importe'      => $montoCuota,
+                        'nro_cuenta'   => $i,
+                        'estado'       => 'PENDIENTE'
+                    ]);
+                }
             } else {
-                DB::table('stocks')->insert([
-                    'id_producto' => $idProducto,
-                    'id_sucursal' => $idSucursal,
-                    'cantidad'    => $cantidad,
-                ]);
+                // Si cambió a CONTADO, borrar cuotas pendientes si existían
+                DB::table('cuentas_a_pagar')
+                    ->where('id_compra', $id)
+                    ->where('estado', 'PENDIENTE')
+                    ->delete();
             }
-        } else {
-            $row = DB::table('stocks')->where('id_producto', $idProducto)->first();
-            if ($row) {
-                DB::table('stocks')->where('id_producto', $idProducto)->update(['cantidad' => ((int)$row->cantidad) + $cantidad]);
+            // =========================================================================
+
+
+            DB::commit();
+            Alert::success('Éxito', 'Compra actualizada y cuotas recalculadas correctamente.');
+            return redirect()->route('compras.index');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error en ComprasController@update: ' . $e->getMessage() . ' en la línea ' . $e->getLine());
+
+            if (config('app.debug')) {
+                Alert::error('Error al actualizar la compra', $e->getMessage() . ' en la línea ' . $e->getLine());
             } else {
-                DB::table('stocks')->insert(['id_producto' => $idProducto, 'cantidad' => $cantidad]);
+                Alert::error('Error Inesperado', 'No se pudo actualizar la compra: ' . $e->getMessage());
             }
+
+            return back()->withInput();
         }
     }
 
-    /** Disminuye stock (global o por sucursal) */
-    private function decreaseStock(int $idProducto, int $cantidad, $idSucursal = null): void
+    public function buscarProducto(Request $request)
     {
-        if ($cantidad <= 0) return;
-        if (!DB::getSchemaBuilder()->hasTable('stocks')) return;
-
-        $hasSucursal = DB::getSchemaBuilder()->hasColumn('stocks', 'id_sucursal');
-
-        if ($hasSucursal) {
-            if ($idSucursal === null) {
-                Log::warning('decreaseStock: id_sucursal no provisto; no se actualiza stock por sucursal.');
-                return;
-            }
-            $row = DB::table('stocks')->where([
-                'id_producto' => $idProducto,
-                'id_sucursal' => $idSucursal,
-            ])->first();
-
-            if ($row) {
-                $newQty = max(0, ((int)$row->cantidad) - $cantidad);
-                DB::table('stocks')->where([
-                    'id_producto' => $idProducto,
-                    'id_sucursal' => $idSucursal,
-                ])->update(['cantidad' => $newQty]);
-            }
-        } else {
-            $row = DB::table('stocks')->where('id_producto', $idProducto)->first();
-            if ($row) {
-                $newQty = max(0, ((int)$row->cantidad) - $cantidad);
-                DB::table('stocks')->where('id_producto', $idProducto)->update(['cantidad' => $newQty]);
-            }
-        }
+        $buscar = trim($request->get('query', ''));
+        $productos = DB::table('productos')
+            ->where(function ($q) use ($buscar) {
+                $q->where('descripcion', 'ILIKE', "%{$buscar}%")
+                    ->orWhere(DB::raw("CAST(id_producto AS TEXT)"), 'ILIKE', "%{$buscar}%");
+            })
+            ->limit(50)->get();
+        return view('compras.body_producto', compact('productos'));
     }
 }

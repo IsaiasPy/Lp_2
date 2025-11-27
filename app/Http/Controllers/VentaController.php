@@ -6,7 +6,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use Laracasts\Flash\Flash;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -230,7 +229,7 @@ class VentaController extends Controller
         DB::beginTransaction();
         try {
             // quitar los puntos de miles de los totales
-            $total= str_replace('.', '', $input['total']);
+            $total = str_replace('.', '', $input['total']);
             $ventas = DB::table('ventas')->insertGetId([
                 'id_cliente' => $input['id_cliente'],
                 'condicion_venta' => $input['condicion_venta'],
@@ -242,6 +241,7 @@ class VentaController extends Controller
                 'total' => $total ?? 0,
                 'id_sucursal' => $input['id_sucursal'],
                 'estado' => 'COMPLETADO',
+                'estado_pago' => 'PENDIENTE',
                 'id_apertura' => $input['id_apertura'],
             ], 'id_venta');
 
@@ -291,6 +291,45 @@ class VentaController extends Controller
                     $input['id_apertura']
                 ]);
             }
+            // LÓGICA DE DEUDA: Solo aplica si la venta fue a CRÉDITO
+            if ($input['condicion_venta'] === 'CREDITO') {
+                $importe_cuota = round($subtotal / $input['cantidad_cuota'], 0, PHP_ROUND_HALF_UP); // Calcular monto de cuota
+                $fecha_vencimiento = Carbon::parse($input['fecha_venta']);
+
+                for ($i = 1; $i <= $input['cantidad_cuota']; $i++) {
+                    // Calcular la fecha de vencimiento de la cuota: Sumar el intervalo (días)
+                    $fecha_vencimiento->addDays($input['intervalo']);
+
+                    // El último elemento se ajusta para evitar centavos flotantes (si es necesario)
+                    $monto_final = ($i === (int)$input['cantidad_cuota'])
+                        ? ($subtotal - ($importe_cuota * ($i - 1)))
+                        : $importe_cuota;
+
+                    // Registrar la cuota en cuentas_a_cobrar
+                    DB::insert(
+                        'INSERT INTO cuentas_a_cobrar 
+            (id_venta, id_cliente, nro_cuota, importe, saldo, vencimiento, estado) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        [
+                            $ventas, // ID de la venta
+                            $input['id_cliente'],
+                            $i, // Número de cuota
+                            $monto_final, // Importe de la cuota (lo que debe)
+                            $monto_final, // Saldo inicial es igual al importe
+                            $fecha_vencimiento->format('Y-m-d'),
+                            'PENDIENTE'
+                        ]
+                    );
+                }
+
+                // Si la venta es a CRÉDITO, se marca como PENDIENTE DE PAGO
+                DB::update("UPDATE ventas SET estado_pago = 'PENDIENTE' WHERE id_venta = ?", [$ventas]);
+            } else {
+                // Si la venta es al CONTADO, se marca como PAGADO
+                DB::update("UPDATE ventas SET estado_pago = 'PAGADO' WHERE id_venta = ?", [$ventas]);
+
+                // Aquí podrías llamar al CobroController@store para registrar el pago al contado si fuera necesario.
+            }
             // Si todo esta bien realiza el envio e inserta la venta y detalle
             DB::commit();
         } catch (\Exception $e) {
@@ -339,7 +378,7 @@ class VentaController extends Controller
         $venta = DB::selectOne('SELECT * FROM ventas WHERE id_venta = ?', [$id]);
 
         if (empty($venta)) {
-            Flash::error('Venta no encontrada');
+            Alert::toast('Venta no encontrada', 'error');
             return redirect()->route('ventas.index');
         }
 
@@ -393,7 +432,7 @@ class VentaController extends Controller
         $ventas = DB::selectOne('SELECT * FROM ventas WHERE id_venta = ?', [$id]);
 
         if (empty($ventas)) {
-            Flash::error('Venta no encontrada');
+            Alert::toast('Venta no encontrada', 'error');
             return redirect()->route('ventas.index');
         }
 
@@ -490,7 +529,7 @@ class VentaController extends Controller
         }
 
 
-        Flash::success('Venta actualizada exitosamente.');
+        Alert::toast('Venta actualizada exitosamente.', 'success');
         return redirect()->route('ventas.index');
     }
 
@@ -499,7 +538,7 @@ class VentaController extends Controller
         $ventas = DB::selectOne('SELECT * FROM ventas WHERE id_venta = ?', [$id]);
 
         if (empty($ventas)) {
-            Flash::error('Venta no encontrada');
+            Alert::toast('Venta no encontrada', 'error');
             return redirect()->route('ventas.index');
         }
 
@@ -534,7 +573,7 @@ class VentaController extends Controller
             return redirect()->back()->withErrors($e->getMessage());
         }
 
-        Flash::success('Venta anulada exitosamente.');
+        Alert::toast('Venta anulada exitosamente.', 'success');
 
         return redirect()->route('ventas.index');
     }
@@ -613,7 +652,7 @@ class VentaController extends Controller
 
         // libreria para convertir numero a letras
         $formateo = new NumeroALetras();
-        $numero_a_letras = $formateo->toWords($ventas->total);// recuperar de la venta y convertir a letras
+        $numero_a_letras = $formateo->toWords($ventas->total); // recuperar de la venta y convertir a letras
 
         return view('ventas.factura')->with('ventas', $ventas)
             ->with('detalle_venta', $detalle_venta)

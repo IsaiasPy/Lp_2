@@ -9,12 +9,12 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Laracasts\Flash\Flash;
+use Illuminate\Support\Str;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class UserController extends Controller
 {
- /*    public function __construct()
+    /*    public function __construct()
     {
         // validar que el usuario este autenticado
         $this->middleware('auth');
@@ -96,6 +96,16 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $input = $request->all();
+        $input['name'] = Str::upper(Str::ascii(trim($input['name'])));
+
+        $input['email'] = Str::lower(Str::ascii(trim($input['email'])));
+
+        if (isset($input['ci'])) {
+            $input['ci'] = str_replace('.', '', $input['ci']);
+        }
+        if (isset($input['direccion'])) {
+            $input['direccion'] = Str::upper(Str::ascii(trim($input['direccion'])));
+        }
 
         // Validar los datos del formulario
         $validacion = Validator::make($input, [
@@ -160,13 +170,13 @@ class UserController extends Controller
         return redirect(route('users.index'));
     }
 
-    public function edit($id) 
+    public function edit($id)
     {
         // Obtener los datos del usuario
         $users = DB::selectOne('SELECT * FROM users WHERE id = ?', [$id]);
 
-        if(empty($users)){
-            Flash::error('Usuario no encontrado.');
+        if (empty($users)) {
+            Alert::toast('Usuario no encontrado.', 'error');
             return redirect(route('users.index'));
         }
 
@@ -176,95 +186,144 @@ class UserController extends Controller
         return view('users.edit')->with('users', $users)->with('roles', $roles)->with('sucursales', $sucursales);
     }
 
-    public function update(Request $request, $id) 
+    public function update(Request $request, $id)
     {
-        $input = $request->all();
-        // Obtener los datos del usuario
-        $users = DB::selectOne('SELECT * FROM users WHERE id = ?', [$id]);
+        // 1. VERIFICAR SI EXISTE EL USUARIO
+        $usuario = DB::selectOne('SELECT * FROM users WHERE id = ?', [$id]);
 
-        if(empty($users)){
-            Flash::error('Usuario no encontrado.');
+        if (empty($usuario)) {
+            Alert::toast('Usuario no encontrado.', 'error');
             return redirect(route('users.index'));
         }
 
-        $validacion = Validator::make($input, [
+        $input = $request->all();
+
+        // 2. SANITIZACIÓN (LIMPIEZA DE DATOS)
+        // Nombres y textos a Mayúsculas y sin acentos
+        $input['name'] = Str::upper(Str::ascii(trim($input['name'])));
+
+        // El Email SIEMPRE va en minúsculas
+        $input['email'] = Str::lower(trim($input['email']));
+
+        // Si tienes estos campos en tu formulario, también los limpiamos:
+        if (isset($input['direccion'])) $input['direccion'] = Str::upper(Str::ascii(trim($input['direccion'])));
+        if (isset($input['ci'])) $input['ci'] = str_replace('.', '', $input['ci']); // Quitar puntos de CI
+
+        // 3. DEFINIR REGLAS DE VALIDACIÓN
+        $reglas = [
             'name' => 'required',
-            'email' => 'required|unique:users,email,' . $users->id, // Excluir el usuario actual de la validación
-            'password' => 'nullable|min:6',
-            'ci' => 'required|unique:users,ci,' . $users->id, // Excluir el ci del usuario actual de la validacion
-            'fecha_ingreso' => 'required|date',
-            'role_id' => 'required|exists:roles,id',
-            'id_sucursal' => 'required|exists:sucursales,id_sucursal',
-        ], [
-            'name.required' => 'El campo Nombre es obligatorio.',
-            'email.required' => 'El campo Email es obligatorio.',
-            'email.unique' => 'El nickname ya está en uso.',
-            'password.min' => 'La Contraseña debe tener al menos 6 caracteres.',
-            'ci.required' => 'El campo Nro Documento es obligatorio.',
-            'ci.unique' => 'El Nro Documento ya está en uso.',
-            'fecha_ingreso.required' => 'El campo Fecha de Ingreso es obligatorio.',
-            'fecha_ingreso.date' => 'El campo Fecha de Ingreso debe ser una fecha válida.',
-            'role_id.required' => 'El campo Rol es obligatorio.',
-            'role_id.exists' => 'El Rol seleccionado no es válido.',
-            'id_sucursal.required' => 'El campo Sucursal es obligatorio.',
-            'id_sucursal.exists' => 'La Sucursal seleccionada no es válida.',
+            // unique:users,email,ID_IGNORAR,id (ignora el email de este mismo usuario)
+            'email' => 'required|email|unique:users,email,' . $id . ',id',
+            'role_id' => 'required', // Asumo que validas el rol
+        ];
+
+        // 4. LÓGICA DEL PASSWORD (EL PUNTO CLAVE)
+        // Solo agregamos validación de password si el usuario escribió algo en el campo.
+        // Si lo dejó vacío, significa que NO quiere cambiar su contraseña.
+        if (!empty($input['password'])) {
+            $reglas['password'] = 'min:6|confirmed'; // confirmed busca 'password_confirmation'
+        }
+
+        // Ejecutar validador
+        $validacion = Validator::make($input, $reglas, [
+            'email.unique' => 'El correo ya pertenece a otro usuario.',
+            'password.confirmed' => 'Las contraseñas no coinciden.',
+            'password.min' => 'La contraseña debe tener al menos 6 caracteres.'
         ]);
 
         if ($validacion->fails()) {
-            Flash::error('Error de validación.');
+            Alert::toast('Error en la validación de datos.', 'error');
             return redirect()->back()->withErrors($validacion)->withInput();
         }
 
-        // Validar si la contraseña ha sido cambiada
-        $contrasena = null;
-        if(!empty($input['password']) && !Hash::check($input['password'], $users->password)) {
-            $contrasena = Hash::make($input['password']); // Encriptar la contraseña
-        }else{
-            $contrasena = $users->password; // Mantener la contraseña sin encriptar
+        // 5. ACTUALIZAR EN BASE DE DATOS (DOS CAMINOS POSIBLES)
+
+        if (!empty($input['password'])) {
+            // CAMINO A: El usuario escribió una nueva contraseña.
+            // La encriptamos y actualizamos TODO, incluyendo el password.
+            $passEncriptada = Hash::make($input['password']);
+
+            DB::update(
+                'UPDATE users SET 
+                name = ?, 
+                email = ?, 
+                password = ?, 
+                ci = ?, 
+                direccion = ?, 
+                telefono = ?, 
+                role_id = ?, 
+                id_sucursal = ?
+                WHERE id = ?',
+                [
+                    $input['name'],
+                    $input['email'],
+                    $passEncriptada, // <-- Aquí va la nueva clave
+                    $input['ci'] ?? null,
+                    $input['direccion'] ?? null,
+                    $input['telefono'] ?? null,
+                    $input['role_id'],
+                    $input['id_sucursal'],
+                    $id
+                ]
+            );
+        } else {
+            // CAMINO B: El campo password estaba vacío.
+            // Actualizamos todo MENOS la contraseña (mantiene la vieja).
+            DB::update(
+                'UPDATE users SET 
+                name = ?, 
+                email = ?, 
+                ci = ?, 
+                direccion = ?, 
+                telefono = ?, 
+                role_id = ?, 
+                id_sucursal = ?
+                WHERE id = ?',
+                [
+                    $input['name'],
+                    $input['email'],
+                    // NO enviamos password aquí
+                    $input['ci'] ?? null,
+                    $input['direccion'] ?? null,
+                    $input['telefono'] ?? null,
+                    $input['role_id'],
+                    $input['id_sucursal'],
+                    $id
+                ]
+            );
         }
+        // Sincronizar el rol también en la tabla de permisos
+        $userModel = User::find($id);
+        $userModel->roles()->sync($input['role_id']);
 
-        // Actualizar el usuario utilizando el modelo User
-        $usuario = User::where('id', $id)->first();// recuperar el usuario a actualizar
-        $usuario->role_id = $input['role_id'];
-        $usuario->name = $input['name'];
-        $usuario->email = $input['email'];
-        $usuario->password = $contrasena;
-        $usuario->ci = $input['ci'];
-        $usuario->direccion = $input['direccion'] ?? null;
-        $usuario->telefono = $input['telefono'] ?? null;
-        $usuario->fecha_ingreso = $input['fecha_ingreso'];
-        $usuario->id_sucursal = $input['id_sucursal'];
-        $usuario->save();
-        // Asignar el rol al usuario
-        $usuario->roles()->sync($input['role_id']);
-
-        Alert::toast('Usuario actualizado correctamente', 'success');
-
+        Alert::toast('Usuario actualizado correctamente.', 'success');
         return redirect(route('users.index'));
     }
 
-    public function destroy($id) 
+    public function destroy($id)
     {
         $users = DB::selectOne('SELECT * FROM users WHERE id = ?', [$id]);
 
-        if(empty($users)){
-            Flash::error('Usuario no encontrado.');
+        if (empty($users)) {
+            Alert::toast('Usuario no encontrado.', 'error');
             return redirect(route('users.index'));
         }
 
         // validar si debe inactivar o activar segun lo recuperado en la consulta
         $estado = $users->estado == false ? true : false;
 
-        DB::update('UPDATE users SET estado = ? WHERE id = ?', 
-        [
-            $estado, // valor boolean ya que el campo estado es de tipo booleano
-            $id
-        ]);
-        
+        DB::update(
+            'UPDATE users SET estado = ? WHERE id = ?',
+            [
+                $estado, // valor boolean ya que el campo estado es de tipo booleano
+                $id
+            ]
+        );
+
         // Generar mensaje segun estado del usuario
         $mensaje = $estado == true ? 'Usuario activado exitosamente.' : 'Usuario inactivado exitosamente.';
 
-        Flash::success($mensaje);
+        Alert::toast($mensaje, 'success');
 
         return redirect(route('users.index'));
     }
@@ -302,17 +361,17 @@ class UserController extends Controller
         }
 
         #Actualizar la contraseña del usuario en session
-        DB::update('UPDATE users SET password = ? WHERE id = ?', 
-        [
-            Hash::make($input['password']), // utilizar Hash para encriptar la contraseña
-            auth()->user()->id
-        ]);
+        DB::update(
+            'UPDATE users SET password = ? WHERE id = ?',
+            [
+                Hash::make($input['password']), // utilizar Hash para encriptar la contraseña
+                auth()->user()->id
+            ]
+        );
 
         // mostrar mensaje de exito
-        Alert::toast('Éxito', 'Contraseña actualizada correctamente.!', 'success');
-
+        Alert::toast('Contraseña actualizada correctamente!', 'success');
         // quedarse en el mismo formulario profile
         return redirect()->back();
     }
-
 }

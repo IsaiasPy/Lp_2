@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Laracasts\Flash\Flash;
 
 class SucursalController extends Controller
@@ -76,14 +77,16 @@ class SucursalController extends Controller
     public function store(Request $request){
         $input = $request->all();
 
+        $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
         //Validar los datos
         $validacion = Validator::make($input, [
-            'descripcion' => 'required',
+            'descripcion' => 'required|unique:sucursales,descripcion',
             'direccion' => 'required',
             'telefono' => 'required',
             'id_ciudad' => 'required|exists:ciudades,id_ciudad',
         ], [
             'descripcion.required' => 'La descripcion es obligatoria',
+            'descripcion.unique' => 'Ya existe una sucursal con esta descripcion',
             'direccion.required' => 'La direccion es obligatoria',
             'telefono.required' => 'El telefono es obligatorio',
             'id_ciudad.required' => 'La ciudad es obligatoria',
@@ -121,6 +124,9 @@ class SucursalController extends Controller
     }
     public function update(Request $request, $id){
         $input = $request->all();
+
+        $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
+
         //Obtener el producto de la base de datos  1 solo valor utilizando selectOne
         $sucursal = DB::selectOne('SELECT * FROM sucursales WHERE id_sucursal = ?', [$id]);
         //Validar si el producto no existe, redirigir con un mesaje de error
@@ -130,12 +136,13 @@ class SucursalController extends Controller
         }
         //Validar los datos
         $validacion = Validator::make($input, [
-            'descripcion' => 'required',
+            'descripcion' => 'required|unique:sucursales,descripcion,' . $id . ',id_sucursal',
             'direccion' => 'required',
             'telefono' => 'required',
             'id_ciudad' => 'required|exists:ciudades,id_ciudad',
         ], [
             'descripcion.required' => 'La descripcion es obligatoria',
+            'descripcion.unique' => 'Ya existe una sucursal con esta descripcion',
             'direccion.required' => 'La direccion es obligatoria',
             'telefono.required' => 'El telefono es obligatorio',
             'id_ciudad.required' => 'La ciudad es obligatoria',

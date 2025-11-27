@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Laracasts\Flash\Flash;
 use Maatwebsite\Excel\Facades\Excel;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -18,7 +19,7 @@ class CiudadController extends Controller
         // buscar
         $buscar = $request->get('buscar');
 
-        if($buscar) {
+        if ($buscar) {
             $ciudades = DB::select(
                 'SELECT c.*, d.descripcion as departamento
                 FROM ciudades c
@@ -26,14 +27,14 @@ class CiudadController extends Controller
                 WHERE (cast(c.id_ciudad as text) iLIKE ? 
                 OR cast(c.descripcion as text) iLIKE ?
                 OR cast(d.descripcion as text) iLIKE ?)'
-                . ' ORDER BY c.id_ciudad desc',
+                    . ' ORDER BY c.id_ciudad desc',
                 [
-                '%' . $buscar . '%', 
-                '%' . $buscar . '%',
-                '%' . $buscar . '%'
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%'
                 ]
             );
-        }else{
+        } else {
             $ciudades = DB::select(
                 'SELECT c.*, d.descripcion as departamento
                     FROM ciudades c
@@ -85,17 +86,19 @@ class CiudadController extends Controller
         // Validar y guardar la nueva ciudad
         $input = $request->all();
 
-        // Validación de los campos requeridos y existencia del departamento id
+        // 1. LIMPIEZA DE DATOS (OBLIGATORIO)
+        $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
+        // 2. VALIDACIÓN
         $validacion = Validator::make(
             $input,
             [
-                'descripcion' => 'required',
-                'id_departamento' => 'required|exists:departamentos,id_departamento'
+                // Reglas
+                'descripcion' => 'required|unique:ciudades,descripcion',
             ],
             [
-                'descripcion.required' => 'El campo descripción es obligatorio.',
-                'id_departamento.required' => 'El campo id_departamento es obligatorio.',
-                'id_departamento.exists' => 'El id_departamento proporcionado no existe.'
+                // Mensajes Personalizados
+                'descripcion.required' => 'La descripción es obligatoria.',
+                'descripcion.unique'   => 'Ya existe un registro con esta descripción.',
             ]
         );
         // Si la validación falla, redirigir con errores
@@ -107,7 +110,7 @@ class CiudadController extends Controller
         DB::insert(
             'INSERT INTO ciudades (descripcion, id_departamento) VALUES (?, ?)',
             [
-                $input['descripcion'], 
+                $input['descripcion'],
                 $input['id_departamento']
             ]
         );
@@ -124,7 +127,7 @@ class CiudadController extends Controller
         // Obtener la ciudad por su ID
         $ciudad = DB::selectOne('SELECT * FROM ciudades WHERE id_ciudad = ?', [$id]);
 
-        if(empty($ciudad)) {
+        if (empty($ciudad)) {
             // Flash::error('Ciudad no encontrada.');
             // Utilizar SweetAlert para mostrar el mensaje de error
             Alert::alert('Error', 'Ciudad no encontrada.', 'error');
@@ -135,7 +138,7 @@ class CiudadController extends Controller
         $departamentos = DB::table('departamentos')->pluck('descripcion', 'id_departamento');
 
         return view('ciudades.edit')->with('ciudades', $ciudad)
-                                    ->with('departamentos', $departamentos);
+            ->with('departamentos', $departamentos);
     }
 
     public function update(Request $request, $id)
@@ -145,24 +148,27 @@ class CiudadController extends Controller
         $ciudad = DB::selectOne('SELECT * FROM ciudades WHERE id_ciudad = ?', [$id]);
 
         // Si la ciudad no existe, redirigir con un mensaje de error
-        if(empty($ciudad)) {
+        if (empty($ciudad)) {
             // Flash::error('Ciudad no encontrada.');
             // Utilizar SweetAlert para mostrar el mensaje de error
             Alert::alert('Error', 'Ciudad no encontrada.', 'error');
             return redirect(route('ciudades.index'));
         }
 
-        // Validación de los campos requeridos y existencia del departamento id
+        // 1. LIMPIEZA DE DATOS (OBLIGATORIO)
+        $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
+        // 2. VALIDACIÓN
         $validacion = Validator::make(
             $input,
             [
-                'descripcion' => 'required',
-                'id_departamento' => 'required|exists:departamentos,id_departamento'
+                // Reglas (El truco del ignore)
+                // unique:tabla, columna, ID_IGNORAR, NOMBRE_COLUMNA_PK
+                'descripcion' => 'required|unique:ciudades,descripcion,' . $id . ',id_ciudad',
             ],
             [
-                'descripcion.required' => 'El campo descripción es obligatorio.',
-                'id_departamento.required' => 'El campo id_departamento es obligatorio.',
-                'id_departamento.exists' => 'El id_departamento proporcionado no existe.'
+                // Mensajes Personalizados
+                'descripcion.required' => 'La descripción es obligatoria.',
+                'descripcion.unique'   => 'No puedes usar este nombre porque ya existe otro igual.',
             ]
         );
         // Si la validación falla, redirigir con errores
@@ -193,7 +199,7 @@ class CiudadController extends Controller
         $ciudad = DB::selectOne('SELECT * FROM ciudades WHERE id_ciudad = ?', [$id]);
 
         // Si la ciudad no existe, redirigir con un mensaje de error
-        if(empty($ciudad)) {
+        if (empty($ciudad)) {
             // Flash::error('Ciudad no encontrada.');
             // Utilizar SweetAlert para mostrar el mensaje de error
             Alert::alert('Error', 'Ciudad no encontrada.', 'error');

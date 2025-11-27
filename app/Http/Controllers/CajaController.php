@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Laracasts\Flash\Flash;
 
 class CajaController extends Controller
@@ -76,14 +77,17 @@ class CajaController extends Controller
     {
         $input = $request->all();
 
+        $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
+
         //Validar los datos
         $validacion = Validator::make($input, [
-            'descripcion' => 'required',
+            'descripcion' => 'required|unique:cajas,descripcion',
             'id_sucursal' => 'required|exists:sucursales,id_sucursal',
             'punto_expedicion' => 'required',
             'ultima_factura_impresa' => 'required',
         ], [
             'descripcion.required' => 'La descripcion es obligatoria',
+            'descripcion.unique' => 'Ya existe una caja con esta descripcion',
             'id_sucursal.required' => 'La sucursal es obligatoria',
             'id_sucursal.exists' => 'La sucursal no existe',
             'punto_expedicion.required' => 'El punto de expedicion es obligatorio',
@@ -126,6 +130,9 @@ class CajaController extends Controller
         $input = $request->all();
         //Obtener el producto de la base de datos  1 solo valor utilizando selectOne
         $cajas = DB::selectOne('SELECT * FROM cajas WHERE id_caja = ?', [$id]);
+        
+        $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
+        
         //Validar si el producto no existe, redirigir con un mesaje de error
         if (empty($cajas)) {
             Flash('Caja no encontrado');
@@ -133,12 +140,13 @@ class CajaController extends Controller
         }
         //Validar los datos
         $validacion = Validator::make($input, [
-            'descripcion' => 'required',
+            'descripcion' => 'required|unique:cajas,descripcion,' . $id . ',id_caja',
             'id_sucursal' => 'required|exists:sucursales,id_sucursal',
             'punto_expedicion' => 'required',
             'ultima_factura_impresa' => 'required',
         ], [
             'descripcion.required' => 'La descripcion es obligatoria',
+            'descripcion.unique' => 'Ya existe una caja con esta descripcion',
             'id_sucursal.required' => 'La sucursal es obligatoria',
             'id_sucursal.exists' => 'La sucursal no existe',
             'punto_expedicion.required' => 'El punto de expedicion es obligatorio',

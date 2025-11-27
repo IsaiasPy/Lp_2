@@ -6,15 +6,16 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Laracasts\Flash\Flash;
 
 class ProveedorController extends Controller
 {
     public function index(Request $request)
-{
-    $buscar = $request->get('buscar');
+    {
+        $buscar = $request->get('buscar');
 
-        if($buscar) {
+        if ($buscar) {
 
             $proveedores = DB::select(
                 'select * from proveedores 
@@ -22,12 +23,12 @@ class ProveedorController extends Controller
                 OR cast(direccion as text) ilike ?
                 OR cast(telefono as text) ilike ?)',
                 [
-                '%' . $buscar . '%',
-                '%' . $buscar . '%',
-                '%' . $buscar . '%'
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%',
+                    '%' . $buscar . '%'
                 ]
             );
-        }else{
+        } else {
             $proveedores = DB::select(
                 'SELECT * from proveedores'
             );
@@ -58,7 +59,7 @@ class ProveedorController extends Controller
         }
 
         return view('proveedores.index')->with('proveedores', $proveedores);
-}
+    }
 
     public function create()
     {
@@ -70,15 +71,18 @@ class ProveedorController extends Controller
         # campos recibidos del formulario proveedores
         $input = $request->all();
 
+        $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
+
         # validacion de los campos proveedor
         $validacion = Validator::make(
             $input,
             [
-                'descripcion' => 'required',
+                'descripcion' => 'required|unique:proveedores,descripcion',
                 'telefono' => 'required',
             ],
             [
                 'descripcion.required' => 'El campo descripcion es obligatorio.',
+                'descripcion.unique' => 'Ya existe un proveedor con esta descripcion.',
                 'telefono.required' => 'El campo telefono es obligatorio.',
             ]
         );
@@ -117,6 +121,8 @@ class ProveedorController extends Controller
     {
         $input = $request->all();
 
+        $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
+
         $proveedor = DB::selectOne('SELECT * FROM proveedores WHERE id_proveedor = ?', [$id]);
 
         if (empty($proveedor)) {
@@ -127,11 +133,12 @@ class ProveedorController extends Controller
         $validacion = Validator::make(
             $input,
             [
-                'descripcion' => 'required',
+                'descripcion' => 'required|unique:proveedores,descripcion,' . $id . ',id_proveedor',
                 'telefono' => 'required',
             ],
             [
                 'descripcion.required' => 'El campo descripcion es obligatorio.',
+                'descripcion.unique' => 'Ya existe un proveedor con esta descripcion.',
                 'telefono.required' => 'El campo telefono es obligatorio.',
             ]
         );
@@ -159,7 +166,7 @@ class ProveedorController extends Controller
         return redirect(route('proveedores.index'));
     }
 
-    public function destroy($id) 
+    public function destroy($id)
     {
         $proveedor = DB::selectOne('SELECT * FROM proveedores WHERE id_proveedor = ?', [$id]);
 

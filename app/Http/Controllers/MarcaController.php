@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Laracasts\Flash\Flash;
 
 class MarcaController extends Controller
@@ -14,7 +15,7 @@ class MarcaController extends Controller
     {
         $buscar = $request->get('buscar');
 
-        if($buscar) {
+        if ($buscar) {
 
             $marcas = DB::select(
                 'select m.*, m.id_marca as id, m.descripcion as descripcion
@@ -22,10 +23,10 @@ class MarcaController extends Controller
                 where (cast(m.descripcion as text) ilike ?)
                 order by id_marca desc',
                 [
-                '%' . $buscar . '%', 
+                    '%' . $buscar . '%',
                 ]
             );
-        }else{
+        } else {
             $marcas = DB::select(
                 'SELECT * from marcas'
             );
@@ -63,26 +64,36 @@ class MarcaController extends Controller
     }
     public function store(Request $request)
     {
-        //campos recibidos del formulario
+        // 1. Capturamos los datos
         $input = $request->all();
-        //validacion de los campos
+
+        // Por Normalizacion
+        // Pasamos a mayúsculas y quitamos espacios en blanco al inicio/final
+        if (isset($input['descripcion'])) {
+            $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
+        }
+
+        //Validación (Ahora comparará peras con peras)
         $validacion = Validator::make(
             $input,
             [
-                'descripcion' => 'required'
+                'descripcion' => 'required|unique:marcas,descripcion'
             ],
             [
-                'descripcion.required' => 'El campo descripcion es obligatorio'
+                'descripcion.required' => 'El campo descripcion es obligatorio',
+                'descripcion.unique' => 'La marca ' . $input['descripcion'] . ' ya existe en el sistema.'
             ]
         );
+
         if ($validacion->fails()) {
             return back()->withErrors($validacion)->withInput();
         }
-        //insertar proveedores en la base de datos
+
+        // 4. Insertar usando el dato ya limpio ($input['descripcion'])
         DB::insert(
             'INSERT INTO marcas (descripcion) values (?)',
             [
-                $input['descripcion']
+                $input['descripcion'] // Aquí viaja en MAYÚSCULAS
             ]
         );
         Flash::success('Marca creada con exito');
@@ -105,15 +116,19 @@ class MarcaController extends Controller
             return redirect()->route('marcas.index');
         }
         $input = $request->all();
+        $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
         $validacion = Validator::make(
             $input,
             [
-                'descripcion' => 'required'
+                //Ignoramos el ID actual especificando 'id_marca' al final
+                'descripcion' => 'required|unique:marcas,descripcion,' . $id . ',id_marca'
             ],
             [
-                'descripcion.required' => 'El campo descripcion es obligatorio'
+                'descripcion.required' => 'El campo descripcion es obligatorio',
+                'descripcion.unique' => 'Ya existe otra marca con este nombre.'
             ]
         );
+
         if ($validacion->fails()) {
             return back()->withErrors($validacion)->withInput();
         }

@@ -5,34 +5,31 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Laracasts\Flash\Flash;
-use Illuminate\Pagination\LengthAwarePaginator;// libreria a importar para paginacion manual
+use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Str;
 
 class ProductoController extends Controller
 {
-    // Definir una variable para el path
     private $path;
+
     public function __construct()
     {
         $this->middleware('auth');
-        // Definir Path para grabar mi archivo recibido
         $this->path = public_path() . "/img/productos/";
-
     }
+
     public function index(Request $request)
     {
-        // Obtener el término de búsqueda del request
         $buscar = $request->get('buscar');
-        // validar que contenga un valor el buscar
-        $sql = '';// definir una variable sql vacia
+        $sql = '';
 
         if (!empty($buscar)) {
             $sql = " WHERE p.descripcion iLIKE '%" . $buscar . "%' 
             or m.descripcion iLIKE '%" . $buscar . "%' 
-            or cast(p.id_producto as text) iLIKE '%" . $buscar . "%'"; // si tiene valor agregar la condicion a la variable sql
+            or cast(p.id_producto as text) iLIKE '%" . $buscar . "%'";
         }
-        
-        // Consulta para obtener los productos con la marca asociada y si posee filtros
+
         $productos = DB::select(
             'SELECT p.*, m.descripcion as marcas 
              FROM productos p
@@ -41,46 +38,34 @@ class ProductoController extends Controller
              ORDER BY p.id_producto desc'
         );
 
-        // Definimos los valores de paginación
-        $page = $request->input('page', 1);   // página actual (por defecto 1)
-        $perPage = 10;                        // cantidad de registros por página
-        $total = count($productos);           // total de registros
-
-        // Cortamos el array para solo devolver los registros de la página actual
+        $page = $request->input('page', 1);
+        $perPage = 10;
+        $total = count($productos);
         $items = array_slice($productos, ($page - 1) * $perPage, $perPage);
 
-        // Creamos el paginador manualmente
         $productos = new LengthAwarePaginator(
-            $items,        // registros de esta página
-            $total,        // total de registros
-            $perPage,      // registros por página
-            $page,         // página actual
-            [
-                'path'  => $request->url(),     // mantiene la ruta base
-                'query' => $request->query(),   // mantiene parámetros como "buscar"
-            ]
+            $items,
+            $total,
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
         );
 
-        // si la accion es buscardor entonces significa que se debe recargar mediante ajax la tabla
-        if ($request->ajax()) {// devuelve true o false si es ajax o no
-            //solo llmamamos a table.blade.php y mediante compact pasamos la variable users
+        if ($request->ajax()) {
             return view('productos.table')->with('productos', $productos);
         }
-
 
         return view('productos.index')->with('productos', $productos);
     }
 
     public function create()
     {
-        // Cargar los tipos de IVA para el select
         $tipo_iva = array(
             '0' => 'Exento',
             '5' => 'Gravada 5%',
             '10' => 'Gravada 10%',
         );
 
-        // Obtener las marcas para cargar el select
         $marcas = DB::table('marcas')->pluck('descripcion', 'id_marca');
 
         return view('productos.create')->with('tipo_iva', $tipo_iva)->with('marcas', $marcas);
@@ -90,52 +75,52 @@ class ProductoController extends Controller
     {
         $input = $request->all();
 
-        // Validar los datos del formulario
+        // 1. SANITIZACIÓN: Convertir a Mayúsculas
+        if (isset($input['descripcion'])) {
+            $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
+        }
+
+        // 2. VALIDACIÓN
         $validacion = Validator::make($input, [
-            'descripcion' => 'required',
+            // Agregamos 'unique' apuntando a la tabla productos y columna descripcion
+            'descripcion' => 'required|unique:productos,descripcion',
             'precio' => 'required',
             'id_marca' => 'required|exists:marcas,id_marca',
             'tipo_iva' => 'required|numeric',
-            'imagen_producto' => 'nullable|image|max:2048' // Validación para la imagen (opcional)
+            'imagen_producto' => 'nullable|image|max:2048'
         ], [
             'descripcion.required' => 'La descripción es obligatoria.',
+            'descripcion.unique' => 'Ya existe un producto con esta descripción.',
             'precio.required' => 'El precio es obligatorio.',
             'id_marca.required' => 'La marca es obligatoria.',
             'id_marca.exists' => 'La marca seleccionada no existe.',
             'tipo_iva.required' => 'El tipo de IVA es obligatorio.',
-            'tipo_iva.numeric' => 'El tipo de IVA debe ser un número válido.',
             'imagen_producto.image' => 'El archivo debe ser una imagen.',
             'imagen_producto.max' => 'La imagen no debe superar los 2MB.',
         ]);
 
-        // Si la validación falla, redirigir con errores
         if ($validacion->fails()) {
+            Alert::toast('Error en la validación de datos.', 'error');
             return redirect()->back()
                 ->withErrors($validacion)
                 ->withInput();
         }
 
-        // Validar con hasFile que exista ese dato
+        // Procesar imagen
         if ($request->hasFile('imagen_producto')) {
-            // obtener nombre del archivo de imagen con getClientOriginalName
             $imagen = $request->file('imagen_producto')->getClientOriginalName();
-
-            // mover el archivo imagen al path definido
             $request->file('imagen_producto')->move($this->path, $imagen);
         }
-        // sobre escribir el atributo imagen_producto de la variable $input
-        // validar con isset() para verificar que exista la variable $imagen
         $input['imagen_producto'] = isset($imagen) ? $imagen : null;
 
-
-        // Sacar separador de miles y cambiar  por vacio en el precio
+        // Limpiar precio (quitar puntos)
         $precio = str_replace('.', '', $input['precio']);
 
-        // Insertar el nuevo producto en la base de datos
+        // Insertar
         DB::insert(
             'INSERT INTO productos (descripcion, precio, id_marca, tipo_iva, imagen_producto) VALUES (?, ?, ?, ?, ?)',
             [
-                $input['descripcion'],
+                $input['descripcion'], // Ya va en Mayúsculas
                 $precio,
                 $input['id_marca'],
                 $input['tipo_iva'],
@@ -143,9 +128,7 @@ class ProductoController extends Controller
             ]
         );
 
-        // Redirigir a la lista de productos con un mensaje de éxito
-        Flash::success('Producto creado correctamente.');
-
+        Alert::toast('Producto creado correctamente.', 'success');
         return redirect(route('productos.index'));
     }
 
@@ -153,83 +136,77 @@ class ProductoController extends Controller
     {
         $productos = DB::selectOne('SELECT * FROM productos WHERE id_producto = ?', [$id]);
 
-        // Si el producto no existe, redirigir con un mensaje de error
         if (empty($productos)) {
-            Flash::error('Producto no encontrado.');
+            Alert::toast('Producto no encontrado.', 'error');
             return redirect(route('productos.index'));
         }
 
-        // Cargar los tipos de IVA para el select
         $tipo_iva = array(
             '0' => 'Exento',
             '5' => 'Gravada 5%',
             '10' => 'Gravada 10%',
         );
 
-        // Obtener las marcas para cargar el select
         $marcas = DB::table('marcas')->pluck('descripcion', 'id_marca');
 
         return view('productos.edit')->with('productos', $productos)->with('tipo_iva', $tipo_iva)->with('marcas', $marcas);
     }
 
-    public function update(Request $request, $id) 
+    public function update(Request $request, $id)
     {
-        $input = $request->all();
-
-        // Obtener el producto de la base de datos 1 solo valor utilizando selectOne
+        // Verificar existencia
         $productos = DB::selectOne('SELECT * FROM productos WHERE id_producto = ?', [$id]);
 
-        // Si el producto no existe, redirigir con un mensaje de error
         if (empty($productos)) {
-            Flash::error('Producto no encontrado.');
+            Alert::toast('Producto no encontrado.', 'error');
             return redirect(route('productos.index'));
         }
 
-        // Validar los datos del formulario
+        $input = $request->all();
+
+        // 1. SANITIZACIÓN: Convertir a Mayúsculas
+        if (isset($input['descripcion'])) {
+            $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
+        }
+
+        // 2. VALIDACIÓN (Con ignore para el ID actual)
         $validacion = Validator::make($input, [
-            'descripcion' => 'required',
+            // unique:tabla, columna, id_a_ignorar, columna_pk
+            'descripcion' => 'required|unique:productos,descripcion,' . $id . ',id_producto',
             'precio' => 'required',
             'id_marca' => 'required|exists:marcas,id_marca',
             'tipo_iva' => 'required|numeric',
-            'imagen_producto' => 'nullable|image|max:2048', // Validación para la imagen (opcional)
+            'imagen_producto' => 'nullable|image|max:2048',
         ], [
             'descripcion.required' => 'La descripción es obligatoria.',
+            'descripcion.unique' => 'Ya existe otro producto con esta descripción.',
             'precio.required' => 'El precio es obligatorio.',
-            'id_marca.required' => 'La marca es obligatoria.',
-            'id_marca.exists' => 'La marca seleccionada no existe.',
-            'tipo_iva.required' => 'El tipo de IVA es obligatorio.',
-            'tipo_iva.numeric' => 'El tipo de IVA debe ser un número válido.',
-            'imagen_producto.image' => 'El archivo debe ser una imagen.',
-            'imagen_producto.max' => 'La imagen no debe superar los 2MB.',
+            // ... resto de mensajes
         ]);
 
-        // Si la validación falla, redirigir con errores
         if ($validacion->fails()) {
+            Alert::toast('Error en la validación de datos.', 'error');
             return redirect()->back()
                 ->withErrors($validacion)
                 ->withInput();
         }
 
-        // validar con hasFile que exista eese dato
+        // Procesar imagen (lógica original mantenida)
         if ($request->hasFile('imagen_producto')) {
-            // obtener nombre del archivo de imagen con getClientOriginalName
             $imagen = $request->file('imagen_producto')->getClientOriginalName();
-
-            // mover el archivo imagen al path definido
             $request->file('imagen_producto')->move($this->path, $imagen);
         }
-        // sobre escribir el atributo imagen_producto de la variable $input
+        // Si no subió imagen nueva, mantenemos la anterior ($productos->imagen_producto)
         $input['imagen_producto'] = isset($imagen) ? $imagen : $productos->imagen_producto;
 
-
-        // Sacar separador de miles y cambiar  por vacio en el precio
+        // Limpiar precio
         $precio = str_replace('.', '', $input['precio']);
 
-        // Actualizar el producto en la base de datos
+        // Actualizar
         DB::update(
             'UPDATE productos SET descripcion = ?, precio = ?, id_marca = ?, tipo_iva = ?, imagen_producto = ? WHERE id_producto = ?',
             [
-                $input['descripcion'],
+                $input['descripcion'], // Mayúsculas
                 $precio,
                 $input['id_marca'],
                 $input['tipo_iva'],
@@ -238,27 +215,26 @@ class ProductoController extends Controller
             ]
         );
 
-        // Redirigir a la lista de productos con un mensaje de éxito
-        Flash::success('Producto actualizado correctamente.');
-
+        Alert::toast('Producto actualizado correctamente.', 'success');
         return redirect(route('productos.index'));
     }
 
-    public function destroy($id) 
+    public function destroy($id)
     {
-        // Verificar si el producto existe
         $producto = DB::selectOne('SELECT * FROM productos WHERE id_producto = ?', [$id]);
 
         if (empty($producto)) {
-            Flash::error('Producto no encontrado.');
+            Alert::toast('Producto no encontrado.', 'error');
             return redirect(route('productos.index'));
         }
 
-        // Eliminar el producto de la base de datos
-        DB::delete('DELETE FROM productos WHERE id_producto = ?', [$id]);
-
-        // Redirigir a la lista de productos con un mensaje de éxito
-        Flash::success('Producto eliminado correctamente.');
+        try {
+            DB::delete('DELETE FROM productos WHERE id_producto = ?', [$id]);
+            Alert::toast('Producto eliminado correctamente.', 'success');
+        } catch (\Exception $e) {
+            // Capturamos si falla por clave foránea (ej: si ya se vendió el producto)
+            Alert::toast('No se puede eliminar: el producto está en uso.', 'error');
+        }
 
         return redirect(route('productos.index'));
     }

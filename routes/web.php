@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CobroController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -21,6 +22,17 @@ Route::get('/', function () {
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
 Auth::routes();
+
+
+// 1. RUTA PARA EL FORMULARIO DE PAGO (Método GET) - DEBE IR PRIMERO
+Route::get('cobros/crear-cxc', [CobroController::class, 'createCuentaCobrar'])->name('cobros.cxc.create');
+
+// 2. RUTA PARA PROCESAR EL PAGO (Método POST)
+Route::post('cobros/cuentas-a-cobrar', [CobroController::class, 'storeCuentaCobrar'])->name('cobros.cxc.store');
+
+// 3. RUTA DEL COBRO ORIGINAL (Si mantienes el flujo de cobro total de ventas)
+Route::get('cobros', [CobroController::class, 'index'])->name('cobros.index'); 
+Route::post('cobros', [CobroController::class, 'store']);
 
 ## Crear rutas para cargos
 Route::resource('cargos', App\Http\Controllers\CargoController::class);

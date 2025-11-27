@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class DepartamentoController extends Controller
@@ -62,30 +63,36 @@ class DepartamentoController extends Controller
     {
         return view('departamentos.create');
     }
-    
+
     public function store(Request $request)
     {
         $input = $request->all();
         // validar los datos del formulario
-        $validator = Validator::make(
+        // 1. Limpieza
+        $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
+
+        // 2. Validación
+        $validacion = Validator::make(
             $input,
             [
-                'descripcion' => 'required',
+                'descripcion' => 'required|unique:departamentos,descripcion',
             ],
             [
                 'descripcion.required' => 'El campo descripción es obligatorio.',
+
+                'descripcion.unique'   => 'Este registro ya existe en la base de datos.',
             ]
         );
-
         // Imprimir el error si la validacion falla
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
+        if ($validacion->fails()) {
+            return back()->withErrors($validacion)->withInput();
         }
 
 
         // Si la validación pasa, guardar el nuevo departamento utilizando la función insert de la base de datos
-        DB::insert('insert into departamentos (descripcion) values (?)', 
-            [ 
+        DB::insert(
+            'insert into departamentos (descripcion) values (?)',
+            [
                 $input['descripcion']
             ]
         );
@@ -115,26 +122,30 @@ class DepartamentoController extends Controller
     {
         $input = $request->all();
 
-        // Validar los datos del formulario
-        $validator = Validator::make(
+        $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
+
+        $validacion = Validator::make(
             $input,
             [
-                'descripcion' => 'required',
+                'descripcion' => 'required|unique:departamentos,descripcion,' . $id . ',id_departamento',
             ],
             [
                 'descripcion.required' => 'El campo descripción es obligatorio.',
+
+                'descripcion.unique'   => 'No puedes usar este nombre, ya existe otro igual.',
             ]
         );
 
         // Imprimir el error si la validacion falla
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
+        if ($validacion->fails()) {
+            return back()->withErrors($validacion)->withInput();
         }
 
         // Actualizar el departamento utilizando la función update de la base de datos
-        DB::update('update departamentos set descripcion = ? where id_departamento = ?', 
-            [ 
-                $input['descripcion'], 
+        DB::update(
+            'update departamentos set descripcion = ? where id_departamento = ?',
+            [
+                $input['descripcion'],
                 $id
             ]
         );

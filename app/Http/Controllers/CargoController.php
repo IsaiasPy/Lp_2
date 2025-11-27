@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Laracasts\Flash\Flash;
 
 class CargoController extends Controller
@@ -71,26 +72,35 @@ class CargoController extends Controller
         // recibir los datos del formulario
         $input = $request->all();
 
-        // validar los datos del formulario
-        $validator = Validator::make(
+        // 1. SANITIZACIÓN PROFUNDA
+        // Str::ascii quita acentos (Café -> Cafe)
+        // Str::upper convierte a mayúsculas (Cafe -> CAFE)
+        $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
+
+        // 2. VALIDACIÓN
+        $validacion = Validator::make(
             $input,
             [
-                'descripcion' => 'required',
+                // Reglas
+                'descripcion' => 'required|unique:cargos,descripcion',
             ],
             [
-                'descripcion.required' => 'El campo descripción es obligatorio.',
+                // Mensajes en Español
+                'descripcion.required' => 'La descripción es obligatoria.',
+                'descripcion.unique'   => 'Ya existe un registro con esta descripción.',
             ]
         );
 
         // Imprimir el error si la validacion falla
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
+        if ($validacion->fails()) {
+            return back()->withErrors($validacion)->withInput();
         }
 
 
         // Si la validación pasa, guardar el nuevo cargo utilizando la función insert de la base de datos
-        DB::insert('insert into cargos (descripcion) values (?)', 
-            [ 
+        DB::insert(
+            'insert into cargos (descripcion) values (?)',
+            [
                 $input['descripcion']
             ]
         );
@@ -129,23 +139,30 @@ class CargoController extends Controller
             return redirect()->route('cargos.index');
         }
 
-        // Validar los datos de entrada utilizando la clase Validator de Laravel
-        $validator = Validator::make(
+        // 1. SANITIZACIÓN PROFUNDA
+        $input['descripcion'] = Str::upper(Str::ascii(trim($input['descripcion'])));
+
+        // 2. VALIDACIÓN (Ignorando el ID actual)
+        $validacion = Validator::make(
             $input,
             [
-                'descripcion' => 'required',
+                // unique:tabla, columna, ID_IGNORAR, NOMBRE_COLUMNA_PK
+                'descripcion' => 'required|unique:cargos,descripcion,' . $id . ',id_cargo',
             ],
             [
-                'descripcion.required' => 'El campo descripción es obligatorio.',
+                // Mensajes en Español
+                'descripcion.required' => 'La descripción es obligatoria.',
+                'descripcion.unique'   => 'No puedes usar este nombre porque ya existe otro igual.',
             ]
         );
 
         // Imprimir los errores de validación si existen
-        if ($validator->fails()) {
-            return back()->withErrors($validator)->withInput();
+        if ($validacion->fails()) {
+            return back()->withErrors($validacion)->withInput();
         }
 
-        DB::update('update cargos set descripcion = ? where id_cargo = ?', 
+        DB::update(
+            'update cargos set descripcion = ? where id_cargo = ?',
             [
                 $input['descripcion'],
                 $id
