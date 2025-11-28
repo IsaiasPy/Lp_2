@@ -1,155 +1,128 @@
 <?php
 
-use App\Http\Controllers\CobroController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+
+// IMPORTACIONES DE CONTROLADORES (Siempre arriba)
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\CobroController;
+use App\Http\Controllers\CuentasAPagarController;
+use App\Http\Controllers\PagoProveedorController;
+use App\Http\Controllers\CuentasACobrarController;
+use App\Http\Controllers\CargoController;
+use App\Http\Controllers\DepartamentoController;
+use App\Http\Controllers\ProveedorController;
+use App\Http\Controllers\MarcaController;
+use App\Http\Controllers\CiudadController;
+use App\Http\Controllers\ProductoController;
+use App\Http\Controllers\SucursalController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\CajaController;
+use App\Http\Controllers\ClienteController;
+use App\Http\Controllers\VentaController;
+use App\Http\Controllers\PedidosController;
+use App\Http\Controllers\ReporteController;
+use App\Http\Controllers\ComprasController;
+use App\Http\Controllers\PermissionController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\AperturaCierreCajaController;
+use App\Http\Controllers\StockController;
+use App\Http\Controllers\AuditoriaController;
 
 /*
 |--------------------------------------------------------------------------
 | Web Routes
 |--------------------------------------------------------------------------
-|
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "web" middleware group. Make something great!
-|
 */
 
 Route::get('/', function () {
     return view('auth.login');
 });
 
-Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
-
 Auth::routes();
 
+// GRUPO PROTEGIDO POR AUTENTICACIÓN
+Route::group(['middleware' => ['auth']], function () {
 
-// 1. RUTA PARA EL FORMULARIO DE PAGO (Método GET) - DEBE IR PRIMERO
-Route::get('cobros/crear-cxc', [CobroController::class, 'createCuentaCobrar'])->name('cobros.cxc.create');
+    Route::get('/home', [HomeController::class, 'index'])->name('home');
 
-// 2. RUTA PARA PROCESAR EL PAGO (Método POST)
-Route::post('cobros/cuentas-a-cobrar', [CobroController::class, 'storeCuentaCobrar'])->name('cobros.cxc.store');
+    // RUTAS PERSONALIZADAS: COBROS (CXC)
+    //## 1. Formulario de Cobro (GET)
+    Route::get('cobros/crear-cxc', [CobroController::class, 'createCuentaCobrar'])->name('cobros.cxc.create');
+    // 2. Procesar Cobro (POST)
+    Route::post('cobros/cuentas-a-cobrar', [CobroController::class, 'storeCuentaCobrar'])->name('cobros.cxc.store');
+    // 3. Rutas originales de cobro venta contado
+    Route::get('cobros', [CobroController::class, 'index'])->name('cobros.index'); 
+    Route::post('cobros', [CobroController::class, 'store']);
 
-// 3. RUTA DEL COBRO ORIGINAL (Si mantienes el flujo de cobro total de ventas)
-Route::get('cobros', [CobroController::class, 'index'])->name('cobros.index'); 
-Route::post('cobros', [CobroController::class, 'store']);
 
-## Crear rutas para cargos
-Route::resource('cargos', App\Http\Controllers\CargoController::class);
-## Crear rutas para departamentos
-Route::resource('departamentos', App\Http\Controllers\DepartamentoController::class);
-## Crear rutas para proveedores
-Route::resource('proveedores', App\Http\Controllers\ProveedorController::class);
+    ## RUTAS PERSONALIZADAS: PAGOS PROVEEDORES (CXP)
+    ## 1. Listado de Deudas (Cuentas a Pagar)
+    Route::get('cuentasapagar', [CuentasAPagarController::class, 'index'])->name('cuentasapagar.index');
 
-## Crear rutas para marcas
-Route::resource('marcas', App\Http\Controllers\MarcaController::class);
+    ## 2. Formulario de Pago (GET)
+    Route::get('pagos-proveedor/crear-cxp', [PagoProveedorController::class, 'createCuentaPagar'])
+        ->name('pagosproveedor.cxp.create');
 
-## Crear rutas para ciudades
-Route::resource('ciudades', App\Http\Controllers\CiudadController::class);
+    ## 3. Procesar Pago (POST)
+    Route::post('pagos-proveedor/procesar', [PagoProveedorController::class, 'storeCuentaPagar'])
+        ->name('pagosproveedor.cxp.store');
 
-## Crear rutas para productos
-Route::resource('productos', App\Http\Controllers\ProductoController::class);
 
-## Crear rutas para sucursales
-Route::resource('sucursales', App\Http\Controllers\SucursalController::class);
+    ## RUTAS TIPO RESOURCE (CRUDs Generales)
+    Route::resource('cargos', CargoController::class);
+    Route::resource('departamentos', DepartamentoController::class);
+    Route::resource('proveedores', ProveedorController::class);
+    Route::resource('marcas', MarcaController::class);
+    Route::resource('ciudades', CiudadController::class);
+    Route::resource('productos', ProductoController::class);
+    Route::resource('sucursales', SucursalController::class);
+    Route::resource('users', UserController::class);
+    Route::resource('cajas', CajaController::class);
+    Route::resource('clientes', ClienteController::class);
+    
+    ## Ventas y sus rutas adicionales
+    Route::resource('ventas', VentaController::class);
+    Route::get('buscar-productos', [VentaController::class, 'buscarProducto']);
+    Route::get('pdf', [VentaController::class, 'pdf']);
+    Route::get('imprimir-factura/{id}', [VentaController::class, 'factura']);
 
-## Crear rutas para usuarios
-Route::resource('users', App\Http\Controllers\UserController::class);
+    ## Pedidos
+    Route::resource('pedidos', PedidosController::class);
 
-## Crear rutas para cajas
-Route::resource('cajas', App\Http\Controllers\CajaController::class);
+    ## Compras
+    Route::resource('compras', ComprasController::class);
 
-## Crear rutas para clientes
-Route::resource('clientes', App\Http\Controllers\ClienteController::class);
+    ## Cuentas a Cobrar (Resource)
+    Route::resource('cuentasacobrar', CuentasACobrarController::class);
+    
+    ## Cobros Resource (Dejar al final para que no choque con las custom de arriba)
+    Route::resource('cobros', CobroController::class); 
 
-## Crear rutas para ventas
-Route::resource('ventas', App\Http\Controllers\VentaController::class);
+    ## Seguridad y Auditoría
+    Route::resource('permissions', PermissionController::class);
+    Route::resource('roles', RoleController::class);
+    Route::resource('auditoria', AuditoriaController::class);
 
-## Crear ruta para el buscador
-Route::get('buscar-productos', [App\Http\Controllers\VentaController::class, 'buscarProducto']);
+    ## Caja y Stocks
+    Route::resource('apertura-cierre-caja', AperturaCierreCajaController::class);
+    Route::get('apertura_cierre/editCierre/{id}', [AperturaCierreCajaController::class, 'editCierre']);
+    Route::get('apertura_cierre/cerrar_caja/{id}', [AperturaCierreCajaController::class, 'cerrar_caja']);
+    Route::resource('stocks', StockController::class);
 
-## Crear ruta para Pedidos Examen Final
-Route::resource('pedidos', App\Http\Controllers\PedidosController::class);
-
-## Crear ruta Pdf
-Route::get('pdf', [App\Http\Controllers\VentaController::class, 'pdf']);
-
-## Crear ruta reporte cargo
-Route::get('reporte-cargos', [App\Http\Controllers\ReporteController::class, 'rpt_cargos']);
-
-## Crear ruta para reporte clientes
-Route::get('reporte-clientes', [App\Http\Controllers\ReporteController::class, 'rpt_clientes']);
-
-## Crear ruta para Pedidos
-Route::resource('pedidos', App\Http\Controllers\PedidosController::class);
-
-## Crear ruta para reporte ventas
-Route::get('reporte-ventas', [App\Http\Controllers\ReporteController::class, 'rpt_ventas']);
-
-## Crear ruta para reporte proveedores
-Route::get('reporte-proveedores', [App\Http\Controllers\ReporteController::class, 'rpt_proveedores']);
-
-## Crear ruta para reporte productos
-Route::get('reporte-productos', [App\Http\Controllers\ReporteController::class, 'rpt_productos']);
-
-## Crear ruta para reporte sucursales
-Route::get('reporte-sucursales', [App\Http\Controllers\ReporteController::class, 'rpt_sucursales']);
-
-## Crear ruta para reporte cajas
-Route::get('reporte-cajas', [App\Http\Controllers\ReporteController::class, 'rpt_cajas']);
-
-## Crear ruta para reporte pedidos
-Route::get('reporte-pedidos', [App\Http\Controllers\ReporteController::class, 'rpt_pedidos']);
-
-## Crear ruta para reporte ciudades
-Route::get('reporte-ciudades', [App\Http\Controllers\ReporteController::class, 'rpt_ciudades']);
-
-## Crear ruta para reporte marcas
-Route::get('reporte-marcas', [App\Http\Controllers\ReporteController::class, 'rpt_marcas']);
-
-## Crear ruta para reporte departamentos
-Route::get('reporte-departamentos', [App\Http\Controllers\ReporteController::class, 'rpt_departamentos']);
-
-## Crear ruta para reporte usuarios
-Route::get('reporte-usuarios', [App\Http\Controllers\ReporteController::class, 'rpt_usuarios']);
-
-## Crear ruta para reporte proveedores
-Route::get('reporte-proveedores', [App\Http\Controllers\ReporteController::class, 'rpt_proveedores']);
-
-## Crear ruta para compras
-Route::resource('compras', App\Http\Controllers\ComprasController::class);
-
-## Ruta role permission
-Route::resource('permissions', App\Http\Controllers\PermissionController::class);
-
-## Ruta para Role
-Route::resource('roles', App\Http\Controllers\RoleController::class);
-
-## Ruta para apertura cierre de caja
-Route::resource('apertura-cierre-caja', App\Http\Controllers\AperturaCierreCajaController::class);
-
-## Ruta para Stock
-Route::resource('stocks', App\Http\Controllers\StockController::class);
-
-## Ruta para imprimir factura
-Route::get('imprimir-factura/{id}', [App\Http\Controllers\VentaController::class, 'factura']);
-
-## Ruta para cerrar caja y recuperar los valores
-Route::get('apertura_cierre/editCierre/{id}',
-[App\Http\Controllers\AperturaCierreCajaController::class, 'editCierre']);
-
-## Ruta para guardar caja cerrada
-Route::get('apertura_cierre/cerrar_caja/{id}',
-[App\Http\Controllers\AperturaCierreCajaController::class, 'cerrar_caja']);
-
-## Ruta para cobros
-Route::resource('cobros', App\Http\Controllers\CobroController::class);
-
-## Ruta para exportar cargos a excel Ejemplo
-Route::post('exportar-cargos', [App\Http\Controllers\ReporteController::class, 'exportar']);
-
-## Ruta para Cuentas a cobrar
-Route::resource('cuentasacobrar', App\Http\Controllers\CuentasACobrarController::class);
-
-## Ruta para Auditoria
-Route::resource('auditoria', App\Http\Controllers\AuditoriaController::class);
+    ##Reportes
+    Route::get('reporte-cargos', [ReporteController::class, 'rpt_cargos']);
+    Route::get('reporte-clientes', [ReporteController::class, 'rpt_clientes']);
+    Route::get('reporte-ventas', [ReporteController::class, 'rpt_ventas']);
+    Route::get('reporte-proveedores', [ReporteController::class, 'rpt_proveedores']);
+    Route::get('reporte-productos', [ReporteController::class, 'rpt_productos']);
+    Route::get('reporte-sucursales', [ReporteController::class, 'rpt_sucursales']);
+    Route::get('reporte-cajas', [ReporteController::class, 'rpt_cajas']);
+    Route::get('reporte-pedidos', [ReporteController::class, 'rpt_pedidos']);
+    Route::get('reporte-ciudades', [ReporteController::class, 'rpt_ciudades']);
+    Route::get('reporte-marcas', [ReporteController::class, 'rpt_marcas']);
+    Route::get('reporte-departamentos', [ReporteController::class, 'rpt_departamentos']);
+    Route::get('reporte-usuarios', [ReporteController::class, 'rpt_usuarios']);
+    
+    Route::post('exportar-cargos', [ReporteController::class, 'exportar']);
+});

@@ -44,6 +44,7 @@
 <!-- Reportes -->
 <li
     class="nav-item {{ Request::is('reporte-cargos*') ||
+    Request::is('cuentasapagar*') ||
     Request::is('cuentasacobrar*') ||
     Request::is('stocks*') ||
     Request::is('reporte-clientes*') ||
@@ -62,6 +63,7 @@
     </a>
     <ul class="nav nav-treeview"
         style="display: {{ Request::is('reporte-cargos*') ||
+        Request::is('cuentasapagar*') ||
         Request::is('cuentasacobrar*') ||
         Request::is('stocks*') ||
         Request::is('reporte-clientes*') ||
@@ -74,6 +76,14 @@
     <a href="{{ route('cuentasacobrar.index') }}" class="nav-link {{ Request::is('cuentasacobrar*') ? 'active' : '' }}">
         <i class="nav-icon fas fa-hand-holding-usd"></i>
         <p>Cuentas A Cobrar</p>
+    </a>
+</li>
+
+<li class="nav-item">
+    <a href="{{ route('cuentasapagar.index') }}"
+       class="nav-link {{ Request::is('cuentasapagar*') ? 'active' : '' }}">
+        <i class="nav-icon fas fa-file-invoice-dollar"></i>
+        <p>Cuentas a Pagar</p>
     </a>
 </li>
         <li class="nav-item">

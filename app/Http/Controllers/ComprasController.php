@@ -87,9 +87,6 @@ class ComprasController extends Controller
         return view('compras.create', compact('proveedores', 'sucursales', 'condicion_compra', 'intervalo'));
     }
 
-    /**
-     * Guarda una nueva compra en la base de datos.
-     */
     public function store(Request $request)
     {
         $input = $request->all();
@@ -130,14 +127,14 @@ class ComprasController extends Controller
         try {
             $total = 0;
             foreach ($input['precio'] as $i => $precio_str) {
-                // CORRECCIÓN: Eliminar todos los caracteres que no sean dígitos
+                // Limpieza de precios
                 $precio_limpio = preg_replace('/[^0-9]/', '', $precio_str);
                 $precio = (float)$precio_limpio;
                 $cantidad = (int)$input['cantidad'][$i];
                 $total += $precio * $cantidad;
             }
 
-            // SOLUCIÓN: Especificar el nombre de la columna primaria para insertGetId
+            // 1. INSERCIÓN DE LA COMPRA (Cabecera)
             $idCompra = DB::table('compras')->insertGetId([
                 'id_proveedor'     => $input['id_proveedor'],
                 'fecha_compra'     => $input['fecha_compra'],
@@ -149,49 +146,68 @@ class ComprasController extends Controller
                 'intervalo'        => $input['intervalo'] ?? 0,
                 'cantidad_cuotas'  => $input['cantidad_cuotas'] ?? 0,
                 'estado'           => 'COMPLETADO',
-            ], 'id_compra'); // Especificamos que la columna primaria es 'id_compra'
+                'estado_pago'      => ($input['condicion_compra'] === 'CREDITO') ? 'PENDIENTE' : 'PAGADO', // Nuevo campo
+            ], 'id_compra'); 
 
+            // 2. INSERCIÓN DE DETALLES Y ACTUALIZACIÓN DE STOCK
             foreach ($input['codigo'] as $i => $idProducto) {
-                // CORRECCIÓN: Eliminar todos los caracteres que no sean dígitos
                 $precio_limpio = preg_replace('/[^0-9]/', '', $input['precio'][$i]);
                 $precio = (float)$precio_limpio;
                 $cantidad = (int)$input['cantidad'][$i];
 
-                // SOLUCIÓN: Especificar explícitamente las columnas para evitar que Laravel intente insertar 'id'
                 DB::table('detalle_compras')->insert([
-                    'id_compra'       => $idCompra,
-                    'id_producto'     => $idProducto,
-                    'cantidad'        => $cantidad,
-                    'precio_unitario' => $precio,
+                    'id_compra'        => $idCompra,
+                    'id_producto'      => $idProducto,
+                    'cantidad'         => $cantidad,
+                    'precio_unitario'  => $precio,
                 ]);
 
+                // Aumentamos el stock
                 $this->upsertStock($idProducto, $cantidad, $input['id_sucursal']);
             }
 
+            // 3. LÓGICA DE DEUDA: GENERACIÓN DE CUENTAS POR PAGAR (CXP)
+            if ($input['condicion_compra'] === 'CREDITO') {
+                $cantCuotas = (int)$input['cantidad_cuotas'];
+                $importeCuota = round($total / $cantCuotas, 0, PHP_ROUND_HALF_UP);
+                $fechaVencimiento = Carbon::parse($input['fecha_compra']);
+                $intervaloDias = (int)$input['intervalo'];
+
+                for ($i = 1; $i <= $cantCuotas; $i++) {
+                    $fechaVencimiento->addDays($intervaloDias);
+                    
+                    // Ajuste de la última cuota para cuadrar el total por redondeo
+                    $monto_final = ($i === $cantCuotas) 
+                                   ? ($total - ($importeCuota * ($i - 1))) 
+                                   : $importeCuota;
+
+                    DB::table('cuentas_a_pagar')->insert([
+                        'id_proveedor' => $input['id_proveedor'],
+                        'id_compra'    => $idCompra,
+                        'vencimiento'  => $fechaVencimiento->copy(), // Usar copy() es crucial para Carbon
+                        'importe'      => $monto_final,
+                        'saldo'        => $monto_final, // El saldo es igual al importe inicial
+                        'nro_cuenta'   => $i,
+                        'estado'       => 'PENDIENTE'
+                    ]);
+                }
+            }
             DB::commit();
-            Alert::success('Éxito', 'Compra registrada y stock actualizado.');
+            Alert::success('Éxito', 'Compra registrada, stock y deuda generada.');
             return redirect()->route('compras.index');
         } catch (\Exception $e) {
             DB::rollBack();
-
-            // MODIFICACIÓN: Mostrar el error específico en lugar del mensaje genérico
             Log::error('Error en ComprasController@store: ' . $e->getMessage() . ' en la línea ' . $e->getLine());
 
-            // En modo de desarrollo, mostrar el error completo
             if (config('app.debug')) {
                 Alert::error('Error al registrar la compra', $e->getMessage() . ' en la línea ' . $e->getLine());
             } else {
-                // En producción, mostrar un mensaje más genérico pero registrar el error completo
                 Alert::error('Error Inesperado', 'No se pudo registrar la compra. Contacte al administrador.');
             }
 
             return back()->withInput();
         }
     }
-
-    /**
-     * Anula una compra existente.
-     */
     public function destroy($id)
     {
         $compra = DB::table('compras')->where('id_compra', $id)->first();

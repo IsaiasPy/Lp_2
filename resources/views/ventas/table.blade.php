@@ -23,7 +23,11 @@
                         <td>{{ $venta->cliente }}</td>
                         <td>{{ \Carbon\Carbon::parse($venta->fecha_venta)->format('d/m/Y') }}</td>
                         <td>{{ $venta->factura_nro }}</td>
-                        <td>{{ $venta->condicion_venta }}</td>
+                        <td>
+                            <span class="badge {{ $venta->condicion_venta == 'CONTADO' ? 'badge-success' : 'badge-info' }}">
+                                {{ $venta->condicion_venta }}
+                            </span>
+                        </td>
                         <td>{{ number_format($venta->total, 0, ',', '.') }}</td>
                         <td>{{ $venta->usuario }}</td>
                         <td>
@@ -34,28 +38,43 @@
                         <td style="width: 120px">
                             {!! Form::open(['route' => ['ventas.destroy', $venta->id_venta], 'method' => 'delete']) !!}
                             <div class='btn-group'>
-                                <!-- boton cobros -->
-                                @if($venta->estado <> 'ANULADO' && $venta->estado <> 'PAGADO')<!-- validacion para mostrar el boton de cobros si la venta no es anulada ni pagada -->
-                                    <a href="{{ route('cobros.index', ["id_venta" => $venta->id_venta]) }}" class='btn btn-warning btn-xs'>
+                                
+                                {{-- LÓGICA DE BOTONES DE COBRO --}}
+                                
+                                {{-- 1. Botón COBRAR: Solo para ventas al CONTADO que no estén pagadas ni anuladas --}}
+                                @if($venta->condicion_venta == 'CONTADO' && $venta->estado <> 'ANULADO' && $venta->estado <> 'PAGADO')
+                                    <a href="{{ route('cobros.index', ["id_venta" => $venta->id_venta]) }}" 
+                                       class='btn btn-warning btn-xs' 
+                                       title="Cobrar Venta Contado">
                                         <i class="far fa-money-bill-alt"></i>
                                     </a>
                                 @endif
 
-                                <a href="{{ route('ventas.show', [$venta->id_venta]) }}" class='btn btn-default btn-xs'>
+                                {{-- 2. Botón VER CUOTAS: Solo para ventas a CRÉDITO --}}
+                                @if($venta->condicion_venta == 'CREDITO')
+                                    {{-- Redirige a Cuentas a Cobrar filtrando por el Nro de Factura --}}
+                                    <a href="{{ route('cuentasacobrar.index', ['buscar' => $venta->factura_nro]) }}" 
+                                       class='btn btn-info btn-xs' 
+                                       title="Ver Cuotas / Pagar">
+                                        <i class="fas fa-list-ol"></i>
+                                    </a>
+                                @endif
+
+                                <a href="{{ route('ventas.show', [$venta->id_venta]) }}" class='btn btn-default btn-xs' title="Ver Detalle">
                                     <i class="far fa-eye"></i>
                                 </a>
-                                <!-- utilizamos url en vez de route porque no tenemos un nombre de ruta -->
-                                @if($venta->estado <> 'ANULADO') <!-- validacion para mostrar el boton de imprimir si la venta es pagada -->
+                                
+                                @if($venta->estado <> 'ANULADO') 
                                     <a href="{{ url('imprimir-factura/' . $venta->id_venta) }}"
-                                        class='btn btn-success btn-xs'>
+                                        class='btn btn-success btn-xs' title="Imprimir">
                                         <i class="fas fa-print"></i>
                                     </a>
                                 @endif
-                                <!-- validacion para mostrar los botones de borrar y editar si la venta es anulada -->
+                                
                                 @if ($venta->estado != 'ANULADO')
-                                    @if($venta->estado != 'PAGADO')<!-- validacion para mostrar el boton de editar si la venta no es pagada -->
+                                    @if($venta->estado != 'PAGADO')
                                         <a href="{{ route('ventas.edit', [$venta->id_venta]) }}"
-                                            class='btn btn-default btn-xs'>
+                                            class='btn btn-default btn-xs' title="Editar">
                                             <i class="far fa-edit"></i>
                                         </a>
                                     @endif
@@ -64,6 +83,7 @@
                                         'type' => 'submit',
                                         'class' => 'btn btn-danger btn-xs',
                                         'onclick' => "return confirm('Desea anular la venta?')",
+                                        'title' => 'Anular Venta'
                                     ]) !!}
                                 @endif
                             </div>
